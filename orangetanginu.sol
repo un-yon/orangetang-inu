@@ -75,197 +75,17 @@ library SafeMath {
         return c;
     }
 
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return sub(a, b, "SafeMath: subtraction overflow");
-    }
-
     function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
         require(b <= a, errorMessage);
         uint256 c = a - b;
 
         return c;
     }
-
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-        // benefit is lost if 'b' is also tested.
-        // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
-        if (a == 0) {
-            return 0;
-        }
-
-        uint256 c = a * b;
-        require(c / a == b, "SafeMath: multiplication overflow");
-
-        return c;
-    }
-
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div(a, b, "SafeMath: division by zero");
-    }
-
-    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b > 0, errorMessage);
-        uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-
-        return c;
-    }
-
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        return mod(a, b, "SafeMath: modulo by zero");
-    }
-
-    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b != 0, errorMessage);
-        return a % b;
-    }
-}
-
-library Address {
-    function isContract(address account) internal view returns (bool) {
-        uint256 size;
-        assembly {
-size := extcodesize(account)
-        }
-        return size > 0;
-    }
-
-    function sendValue(address payable recipient, uint256 amount) internal {
-        require(
-                address(this).balance >= amount,
-                "Address: insufficient balance"
-               );
-
-        (bool success, ) = recipient.call{value: amount}("");
-        require(
-                success,
-                "Address: unable to send value, recipient may have reverted"
-               );
-    }
-
-    function functionCall(address target, bytes memory data)
-        internal
-        returns (bytes memory)
-        {
-            return functionCall(target, data, "Address: low-level call failed");
-        }
-
-    function functionCall(
-            address target,
-            bytes memory data,
-            string memory errorMessage
-            ) internal returns (bytes memory) {
-        return functionCallWithValue(target, data, 0, errorMessage);
-    }
-
-    function functionCallWithValue(
-            address target,
-            bytes memory data,
-            uint256 value
-            ) internal returns (bytes memory) {
-        return
-            functionCallWithValue(
-                    target,
-                    data,
-                    value,
-                    "Address: low-level call with value failed"
-                    );
-    }
-
-    function functionCallWithValue(
-            address target,
-            bytes memory data,
-            uint256 value,
-            string memory errorMessage
-            ) internal returns (bytes memory) {
-        require(
-                address(this).balance >= value,
-                "Address: insufficient balance for call"
-               );
-        require(isContract(target), "Address: call to non-contract");
-
-        (bool success, bytes memory returndata) = target.call{value: value}(
-                data
-                );
-        return _verifyCallResult(success, returndata, errorMessage);
-    }
-
-    function functionStaticCall(address target, bytes memory data)
-        internal
-        view
-        returns (bytes memory)
-        {
-            return
-                functionStaticCall(
-                        target,
-                        data,
-                        "Address: low-level static call failed"
-                        );
-        }
-
-    function functionStaticCall(
-            address target,
-            bytes memory data,
-            string memory errorMessage
-            ) internal view returns (bytes memory) {
-        require(isContract(target), "Address: static call to non-contract");
-
-        (bool success, bytes memory returndata) = target.staticcall(data);
-        return _verifyCallResult(success, returndata, errorMessage);
-    }
-
-    function functionDelegateCall(address target, bytes memory data)
-        internal
-        returns (bytes memory)
-        {
-            return
-                functionDelegateCall(
-                        target,
-                        data,
-                        "Address: low-level delegate call failed"
-                        );
-        }
-
-    function functionDelegateCall(
-            address target,
-            bytes memory data,
-            string memory errorMessage
-            ) internal returns (bytes memory) {
-        require(isContract(target), "Address: delegate call to non-contract");
-
-        (bool success, bytes memory returndata) = target.delegatecall(data);
-        return _verifyCallResult(success, returndata, errorMessage);
-    }
-
-    function _verifyCallResult(
-            bool success,
-            bytes memory returndata,
-            string memory errorMessage
-            ) private pure returns (bytes memory) {
-        if (success) {
-            return returndata;
-        } else {
-            if (returndata.length > 0) {
-                assembly {
-                    let returndata_size := mload(returndata)
-                        revert(add(32, returndata), returndata_size)
-                }
-            } else {
-                revert(errorMessage);
-            }
-        }
-    }
 }
 
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
         return msg.sender;
-    }
-
-    function _msgData() internal view virtual returns (bytes calldata) {
-        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691
-        return msg.data;
     }
 }
 
@@ -289,12 +109,12 @@ contract Ownable is Context {
         _;
     }
 
-    function renounceOwnership() public virtual onlyOwner {
+    function renounceOwnership() external virtual onlyOwner {
         emit OwnershipTransferred(_owner, address(0));
         _owner = address(0);
     }
 
-    function transferOwnership(address newOwner) public virtual onlyOwner {
+    function transferOwnership(address newOwner) external virtual onlyOwner {
         require(newOwner != address(0), "Ownable: new owner is the zero address");
         emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
@@ -302,7 +122,6 @@ contract Ownable is Context {
 }
 
 contract OrangeTangInu is IERC20, Ownable {
-    using Address for address;
     using SafeMath for uint256;
     IRouter public uniswapV2Router;
     address public uniswapV2Pair;
@@ -312,7 +131,6 @@ contract OrangeTangInu is IERC20, Ownable {
     mapping (address => uint256) private balances;
     mapping (address => mapping (address => uint256)) private _allowances;
     uint256 private constant _totalSupply = 1000000000 * 10**18;
-    address private dead = 0x000000000000000000000000000000000000dEaD;
     uint256 private _launchBlockNumber;
     uint256 private _launchTimestamp;
     mapping (address => bool) public automatedMarketMakerPairs;
@@ -351,7 +169,7 @@ contract OrangeTangInu is IERC20, Ownable {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
-    function approve(address spender, uint256 amount) public override returns (bool) {
+    function approve(address spender, uint256 amount) external override returns (bool) {
         _approve(_msgSender(), spender, amount);
         return true;
     }
@@ -396,6 +214,7 @@ contract OrangeTangInu is IERC20, Ownable {
     }
     function activateTrading() external onlyOwner {
         require(!isLiquidityAdded, "You can only add liquidity once");
+        isLiquidityAdded = true;
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
         _approve(address(this), address(uniswapV2Router), _totalSupply);
@@ -407,7 +226,6 @@ contract OrangeTangInu is IERC20, Ownable {
                 _msgSender(),
                 block.timestamp
                 );
-        isLiquidityAdded = true;
         address _uniswapV2Pair = IFactory(uniswapV2Router.factory()).getPair(
                 address(this),
                 uniswapV2Router.WETH()
@@ -468,6 +286,6 @@ contract OrangeTangInu is IERC20, Ownable {
         }
         balances[from] -= amount;
         balances[to] += amount;
-        emit Transfer(from, to, amount); 
+        emit Transfer(from, to, amount);
     }
 }
