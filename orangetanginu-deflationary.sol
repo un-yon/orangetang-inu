@@ -357,7 +357,6 @@ contract OrangeTangInu is IERC20, Ownable {
             }
             balances[to] += amount - (amount * (taxFee + burnFee) / 100);
             emit Transfer(from, to, amount - (amount * (taxFee + burnFee) / 100));
-
         }
     }
     function _swapTokensForETH(uint256 tokenAmount) private {
