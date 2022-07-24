@@ -152,7 +152,6 @@ contract OrangeTangInu is IERC20, Ownable {
     uint8 public burnFee = 2;
     address public constant dead = 0x000000000000000000000000000000000000dEaD;
     uint256 minimumTokensBeforeSwap = _totalSupply * 250 / 1000000; // .025%
-    address public marketingWallet; // change me
 
     event AutomatedMarketMakerPairChange(address indexed pair, bool indexed value);
     event UniswapV2RouterChange(address indexed newAddress, address indexed oldAddress);
@@ -161,7 +160,6 @@ contract OrangeTangInu is IERC20, Ownable {
     event ExcludeFromMaxTransferChange(address indexed account, bool isExcluded);
     event ExcludeFromMaxWalletChange(address indexed account, bool isExcluded);
     event ExcludeFromFeesChange(address indexed account, bool isExcluded);
-    event MarketingWalletChange(address indexed newWallet, address indexed oldWallet);
     event MinTokenAmountBeforeSwapChange(uint256 indexed newValue, uint256 indexed oldValue);
     event ClaimETH(uint256 indexed amount);
     event TaxFeeSetToZero();
@@ -180,7 +178,6 @@ contract OrangeTangInu is IERC20, Ownable {
         _isExcludedFromMaxTransactionLimit[address(this)] = true;
         _isExcludedFromMaxTransactionLimit[owner()] = true;
 
-        marketingWallet = owner();
         balances[address(this)] = _totalSupply;
         emit Transfer(address(0), address(this), _totalSupply);
     }
@@ -228,11 +225,6 @@ contract OrangeTangInu is IERC20, Ownable {
         require(newValue != maxTxAmount, "OrangeTang Inu: Cannot update maxTxAmount to same value");
         emit MaxTransactionAmountChange(newValue, maxTxAmount);
         maxTxAmount = newValue;
-    }
-    function setMarketingWallet(address newValue) external onlyOwner {
-        require(address(newValue) != address(marketingWallet), "OrangeTang Inu: Cannot update marketingWallet to same value");
-        emit MarketingWalletChange(address(newValue), address(marketingWallet));
-        marketingWallet = address(newValue);
     }
     function setTaxFeeToZero() external onlyOwner {
         emit TaxFeeSetToZero();
