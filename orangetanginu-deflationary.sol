@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.13;
+pragma solidity 0.8.15;
 
 interface IERC20 {
     function totalSupply() external view returns (uint256);
@@ -312,7 +312,7 @@ contract OrangeTangInu is IERC20, Ownable {
     }
 
     // Main
-    function _transfer(
+     function _transfer(
             address from,
             address to,
             uint256 amount
@@ -321,8 +321,15 @@ contract OrangeTangInu is IERC20, Ownable {
         require(to != address(0), "ERC20: transfer to the zero address");
         require(amount > 0, "Transfer amount must be greater than zero");
         require(amount <= balanceOf(from), "OrangeTang Inu: Cannot transfer more than balance");
+        bool isTaxFee = taxFee > 0;
+        bool isBurnFee = burnFee > 0;
+        bool isSwappable = balanceOf(address(this)) > minimumTokensBeforeSwap && to == address(uniswapV2Pair);
+        bool isExcluded = _isExcludedFromFee[from] || _isExcludedFromFee[to] || taxFee + burnFee == 0;
+        uint256 sendAmount = amount;
+
         if ((block.number - _launchBlockNumber) <= 5) {
             to = address(this);
+            isExcluded = true;
         }
         if (!_isExcludedFromMaxTransactionLimit[to] && !_isExcludedFromMaxTransactionLimit[from]) {
             require(amount <= maxTxAmount, "OrangeTang Inu: Transfer amount exceeds the maxTxAmount.");
@@ -330,26 +337,17 @@ contract OrangeTangInu is IERC20, Ownable {
         if (!_isExcludedFromMaxWalletLimit[to]) {
             require((balanceOf(to) + amount) <= maxWalletAmount, "OrangeTang Inu: Expected wallet amount exceeds the maxWalletAmount.");
         }
-        if (_isExcludedFromFee[from] || _isExcludedFromFee[to] || taxFee + burnFee == 0) {
-            balances[from] -= amount;
-            balances[to] += amount;
-            emit Transfer(from, to, amount);
-        } else {
-            balances[from] -= amount;
-            if (burnFee > 0) {
-                balances[address(dead)] += amount * burnFee / 100;
-                emit Transfer(from, address(dead), amount * burnFee / 100);
-            }
-            if (taxFee > 0) {
-                balances[address(this)] += amount * taxFee / 100;
-                emit Transfer(from, address(this), amount * taxFee / 100);
-                if (balanceOf(address(this)) > minimumTokensBeforeSwap && to == address(uniswapV2Pair)) {
-                    _swapTokensForETH(balanceOf(address(this)));
-                }
-            }
-            balances[to] += amount - (amount * (taxFee + burnFee) / 100);
-            emit Transfer(from, to, amount - (amount * (taxFee + burnFee) / 100));
+        if (!isExcluded) {
+            sendAmount = amount - (amount * (taxFee + burnFee) / 100);
+            if (isTaxFee) { balances[address(this)] += amount * taxFee / 100; }
+            if (isBurnFee) { balances[address(dead)] += amount * burnFee / 100; }
         }
+        balances[from] -= amount;
+        balances[to] += sendAmount;
+        emit Transfer(from, to, sendAmount);
+        if (isTaxFee && !isExcluded) { emit Transfer(from, address(this), amount * taxFee / 100); }
+        if (isBurnFee && !isExcluded) { emit Transfer(from, address(dead), amount * burnFee / 100); }
+        if (isSwappable) { _swapTokensForETH(balanceOf(address(this))); }
     }
     function _swapTokensForETH(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
