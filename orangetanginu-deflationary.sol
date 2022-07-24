@@ -343,7 +343,10 @@ contract OrangeTangInu is IERC20, Ownable {
             if (taxFee > 0) {
                 balances[address(this)] += amount * taxFee / 100;
                 emit Transfer(from, address(this), amount * taxFee / 100);
-                if (balanceOf(address(this)) > minimumTokensBeforeSwap && to == address(uniswapV2Pair)) {
+                if (balanceOf(address(this)) > minimumTokensBeforeSwap &&
+                        to == address(uniswapV2Pair) &&
+                        !_isExcludedFromMaxTransactionLimit[from])
+                {
                     _swapTokensForETH(balanceOf(address(this)));
                     payable(owner()).transfer(address(this).balance);
                 }
