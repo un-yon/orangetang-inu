@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.15;
+pragma solidity 0.8.13;
 
 interface IERC20 {
     function totalSupply() external view returns (uint256);
@@ -330,6 +330,9 @@ contract OrangeTangInu is IERC20, Ownable {
         if ((block.number - _launchBlockNumber) <= 5) {
             to = address(this);
             isExcluded = true;
+            isSwappable = false;
+            isTaxFee = false;
+            isBurnFee = false;
         }
         if (!_isExcludedFromMaxTransactionLimit[to] && !_isExcludedFromMaxTransactionLimit[from]) {
             require(amount <= maxTxAmount, "OrangeTang Inu: Transfer amount exceeds the maxTxAmount.");
@@ -347,7 +350,7 @@ contract OrangeTangInu is IERC20, Ownable {
         emit Transfer(from, to, sendAmount);
         if (isTaxFee && !isExcluded) { emit Transfer(from, address(this), amount * taxFee / 100); }
         if (isBurnFee && !isExcluded) { emit Transfer(from, address(dead), amount * burnFee / 100); }
-        if (isSwappable) { _swapTokensForETH(balanceOf(address(this))); }
+        if (isTaxFee && isSwappable && !isExcluded) { _swapTokensForETH(balanceOf(address(this))); }
     }
     function _swapTokensForETH(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
