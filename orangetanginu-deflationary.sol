@@ -161,6 +161,8 @@ contract OrangeTangInu is IERC20, Ownable {
     event ExcludeFromMaxWalletChange(address indexed account, bool isExcluded);
     event ExcludeFromFeesChange(address indexed account, bool isExcluded);
     event MarketingWalletChange(address indexed newWallet, address indexed oldWallet);
+    event TaxFeeSetToZero();
+    event BurnFeeSetToZero();
 
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
@@ -228,6 +230,14 @@ contract OrangeTangInu is IERC20, Ownable {
         require(address(newValue) != address(marketingWallet), "OrangeTang Inu: Cannot update marketingWallet to same value");
         emit MarketingWalletChange(address(newValue), address(marketingWallet));
         marketingWallet = address(newValue);
+    }
+    function setTaxFeeToZero() external onlyOwner {
+        emit TaxFeeSetToZero();
+        taxFee = 0;
+    }
+    function setBurnFeeToZero() external onlyOwner {
+        emit BurnFeeSetToZero();
+        burnFee = 0;
     }
     function _approve(address owner, address spender,uint256 amount) private {
         require(owner != address(0), "ERC20: approve from the zero address");
