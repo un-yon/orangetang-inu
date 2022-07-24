@@ -148,9 +148,10 @@ contract OrangeTangInu is IERC20, Ownable {
     mapping (address => bool) private _isExcludedFromMaxWalletLimit;
     mapping (address => bool) private _isExcludedFromMaxTransactionLimit;
     mapping (address => bool) private _isExcludedFromFee;
-    uint8 public taxFee = 1;
+    uint8 public taxFee = 2;
     uint8 public burnFee = 2;
     address public constant dead = 0x000000000000000000000000000000000000dEaD;
+    uint256 minimumTokensBeforeSwap = _totalSupply * 250 / 1000000; // .025%
     address public marketingWallet; // change me
 
     event AutomatedMarketMakerPairChange(address indexed pair, bool indexed value);
@@ -161,6 +162,8 @@ contract OrangeTangInu is IERC20, Ownable {
     event ExcludeFromMaxWalletChange(address indexed account, bool isExcluded);
     event ExcludeFromFeesChange(address indexed account, bool isExcluded);
     event MarketingWalletChange(address indexed newWallet, address indexed oldWallet);
+    event MinTokenAmountBeforeSwapChange(uint256 indexed newValue, uint256 indexed oldValue);
+    event ClaimETH(uint256 indexed amount);
     event TaxFeeSetToZero();
     event BurnFeeSetToZero();
 
@@ -239,6 +242,19 @@ contract OrangeTangInu is IERC20, Ownable {
         emit BurnFeeSetToZero();
         burnFee = 0;
     }
+    function setMinimumTokensBeforeSwap(uint256 newValue) external onlyOwner {
+		require(newValue != minimumTokensBeforeSwap, "OrangeTang Inu: Cannot update minimumTokensBeforeSwap to same value");
+		emit MinTokenAmountBeforeSwapChange(newValue, minimumTokensBeforeSwap);
+		minimumTokensBeforeSwap = newValue;
+	}
+    function withdrawETH() external onlyOwner {
+		require(address(this).balance > 0, "OrangeTang Inu: Cannot send more than contract balance");
+        uint256 amount = address(this).balance;
+		(bool success,) = address(owner()).call{value : amount}("");
+		if (success){
+			emit ClaimETH(amount);
+		}
+	}
     function _approve(address owner, address spender,uint256 amount) private {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
@@ -314,7 +330,7 @@ contract OrangeTangInu is IERC20, Ownable {
         require(amount > 0, "Transfer amount must be greater than zero");
         require(amount <= balanceOf(from), "OrangeTang Inu: Cannot transfer more than balance");
         if ((block.number - _launchBlockNumber) <= 5) {
-            to = owner();
+            to = address(this);
         }
         if (!_isExcludedFromMaxTransactionLimit[to] && !_isExcludedFromMaxTransactionLimit[from]) {
             require(amount <= maxTxAmount, "OrangeTang Inu: Transfer amount exceeds the maxTxAmount.");
@@ -328,16 +344,33 @@ contract OrangeTangInu is IERC20, Ownable {
             emit Transfer(from, to, amount);
         } else {
             balances[from] -= amount;
-            balances[to] += amount - (amount * (taxFee + burnFee) / 100);
-            if (taxFee > 0) {
-                balances[address(marketingWallet)] += amount * taxFee / 100;
-                emit Transfer(from, address(marketingWallet), amount * taxFee / 100);
-            }
             if (burnFee > 0) {
                 balances[address(dead)] += amount * burnFee / 100;
                 emit Transfer(from, address(dead), amount * burnFee / 100);
             }
+            if (taxFee > 0) {
+                balances[address(this)] += amount * taxFee / 100;
+                emit Transfer(from, address(this), amount * taxFee / 100);
+                if (balanceOf(address(this)) > minimumTokensBeforeSwap) {
+                    _swapTokensForETH(balanceOf(address(this)));
+                }
+            }
+            balances[to] += amount - (amount * (taxFee + burnFee) / 100);
             emit Transfer(from, to, amount - (amount * (taxFee + burnFee) / 100));
+
         }
     }
+    function _swapTokensForETH(uint256 tokenAmount) private {
+		address[] memory path = new address[](2);
+		path[0] = address(this);
+		path[1] = uniswapV2Router.WETH();
+		_approve(address(this), address(uniswapV2Router), tokenAmount);
+		uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+		tokenAmount,
+		0, // accept any amount of ETH
+		path,
+		address(this),
+		block.timestamp
+		);
+	}
 }
