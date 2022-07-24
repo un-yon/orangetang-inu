@@ -312,7 +312,7 @@ contract OrangeTangInu is IERC20, Ownable {
     }
 
     // Main
-     function _transfer(
+    function _transfer(
             address from,
             address to,
             uint256 amount
