@@ -216,6 +216,11 @@ contract OrangeTangInu is IERC20, Ownable {
         _isExcludedFromMaxTransactionLimit[account] = excluded;
         emit ExcludeFromMaxTransferChange(account, excluded);
     }
+    function excludeFromFees(address account, bool excluded) external onlyOwner {
+        require(_isExcludedFromFee[account] != excluded, "OrangeTang Inu: Account is already the value of 'excluded'");
+        _isExcludedFromFee[account] = excluded;
+        emit ExcludeFromFeesChange(account, excluded);
+    }
     function setMaxWalletAmount(uint256 newValue) external onlyOwner {
         require(newValue != maxWalletAmount, "OrangeTang Inu: Cannot update maxWalletAmount to same value");
         emit MaxWalletAmountChange(newValue, maxWalletAmount);
@@ -284,11 +289,6 @@ contract OrangeTangInu is IERC20, Ownable {
         require(automatedMarketMakerPairs[pair] != value, "OrangeTang Inu: Automated market maker pair is already set to that value");
         automatedMarketMakerPairs[pair] = value;
         emit AutomatedMarketMakerPairChange(pair, value);
-    }
-    function excludeFromFees(address account, bool excluded) external onlyOwner {
-        require(_isExcludedFromFee[account] != excluded, "OrangeTang Inu: Account is already the value of 'excluded'");
-        _isExcludedFromFee[account] = excluded;
-        emit ExcludeFromFeesChange(account, excluded);
     }
 
     // Getters
