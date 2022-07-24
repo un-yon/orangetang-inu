@@ -66,12 +66,12 @@ interface IRouter {
                 );
 
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
-		uint256 amountIn,
-		uint256 amountOutMin,
-		address[] calldata path,
-		address to,
-		uint256 deadline
-	) external;
+            uint256 amountIn,
+            uint256 amountOutMin,
+            address[] calldata path,
+            address to,
+            uint256 deadline
+            ) external;
 }
 
 library SafeMath {
@@ -243,18 +243,18 @@ contract OrangeTangInu is IERC20, Ownable {
         burnFee = 0;
     }
     function setMinimumTokensBeforeSwap(uint256 newValue) external onlyOwner {
-		require(newValue != minimumTokensBeforeSwap, "OrangeTang Inu: Cannot update minimumTokensBeforeSwap to same value");
-		emit MinTokenAmountBeforeSwapChange(newValue, minimumTokensBeforeSwap);
-		minimumTokensBeforeSwap = newValue;
-	}
+        require(newValue != minimumTokensBeforeSwap, "OrangeTang Inu: Cannot update minimumTokensBeforeSwap to same value");
+        emit MinTokenAmountBeforeSwapChange(newValue, minimumTokensBeforeSwap);
+        minimumTokensBeforeSwap = newValue;
+    }
     function withdrawETH() external onlyOwner {
-		require(address(this).balance > 0, "OrangeTang Inu: Cannot send more than contract balance");
+        require(address(this).balance > 0, "OrangeTang Inu: Cannot send more than contract balance");
         uint256 amount = address(this).balance;
-		(bool success,) = address(owner()).call{value : amount}("");
-		if (success){
-			emit ClaimETH(amount);
-		}
-	}
+        (bool success,) = address(owner()).call{value : amount}("");
+        if (success){
+            emit ClaimETH(amount);
+        }
+    }
     function _approve(address owner, address spender,uint256 amount) private {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
@@ -357,20 +357,19 @@ contract OrangeTangInu is IERC20, Ownable {
             }
             balances[to] += amount - (amount * (taxFee + burnFee) / 100);
             emit Transfer(from, to, amount - (amount * (taxFee + burnFee) / 100));
-
         }
     }
     function _swapTokensForETH(uint256 tokenAmount) private {
-		address[] memory path = new address[](2);
-		path[0] = address(this);
-		path[1] = uniswapV2Router.WETH();
-		_approve(address(this), address(uniswapV2Router), tokenAmount);
-		uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-		tokenAmount,
-		0, // accept any amount of ETH
-		path,
-		address(this),
-		block.timestamp
-		);
-	}
+        address[] memory path = new address[](2);
+        path[0] = address(this);
+        path[1] = uniswapV2Router.WETH();
+        _approve(address(this), address(uniswapV2Router), tokenAmount);
+        uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
+                tokenAmount,
+                0, // accept any amount of ETH
+                path,
+                address(this),
+                block.timestamp
+                );
+    }
 }
