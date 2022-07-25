@@ -140,7 +140,6 @@ contract OrangeTangInu is IERC20, Ownable {
     mapping (address => mapping (address => uint256)) private _allowances;
     uint256 private constant _totalSupply = 1000000000 * 10**18;
     uint256 private _launchBlockNumber;
-    uint256 private _launchTimestamp;
     mapping (address => bool) public automatedMarketMakerPairs;
     bool public isLiquidityAdded = false;
     uint256 public maxWalletAmount = _totalSupply;
@@ -157,10 +156,13 @@ contract OrangeTangInu is IERC20, Ownable {
     event UniswapV2RouterChange(address indexed newAddress, address indexed oldAddress);
     event MaxWalletAmountChange(uint256 indexed newValue, uint256 indexed oldValue);
     event MaxTransactionAmountChange(uint256 indexed newValue, uint256 indexed oldValue);
+    event TaxFeeChange(uint8 indexed newValue, uint8 indexed oldValue);
+    event BurnFeeChange(uint8 indexed newValue, uint8 indexed oldValue);
     event ExcludeFromMaxTransferChange(address indexed account, bool isExcluded);
     event ExcludeFromMaxWalletChange(address indexed account, bool isExcluded);
     event ExcludeFromFeesChange(address indexed account, bool isExcluded);
     event MinTokenAmountBeforeSwapChange(uint256 indexed newValue, uint256 indexed oldValue);
+    event TradingActivated(uint256 startingBlock);
     event ClaimETH(uint256 indexed amount);
     event TaxFeeSetToZero();
     event BurnFeeSetToZero();
@@ -231,13 +233,17 @@ contract OrangeTangInu is IERC20, Ownable {
         emit MaxTransactionAmountChange(newValue, maxTxAmount);
         maxTxAmount = newValue;
     }
-    function setTaxFeeToZero() external onlyOwner {
-        emit TaxFeeSetToZero();
-        taxFee = 0;
+    function setNewTaxFee(uint8 newValue) external onlyOwner {
+        require(newValue != taxFee, "OrangeTang Inu: Cannot update taxFee to same value");
+        require(newValue <= 5, "OrangeTang Inu: Cannot update taxFee to value > 5");
+        emit TaxFeeChange(newValue, taxFee);
+        taxFee = newValue;
     }
-    function setBurnFeeToZero() external onlyOwner {
-        emit BurnFeeSetToZero();
-        burnFee = 0;
+    function setNewBurnFee(uint8 newValue) external onlyOwner {
+        require(newValue != burnFee, "OrangeTang Inu: Cannot update burnFee to same value");
+        require(newValue <= 5, "OrangeTang Inu: Cannot update burnFee to value > 5");
+        emit BurnFeeChange(newValue, burnFee);
+        burnFee = newValue;
     }
     function setMinimumTokensBeforeSwap(uint256 newValue) external onlyOwner {
         require(newValue != minimumTokensBeforeSwap, "OrangeTang Inu: Cannot update minimumTokensBeforeSwap to same value");
@@ -282,8 +288,8 @@ contract OrangeTangInu is IERC20, Ownable {
         _isExcludedFromMaxWalletLimit[_uniswapV2Pair] = true;
         _isExcludedFromMaxTransactionLimit[_uniswapV2Pair] = true;
         _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
-        _launchTimestamp = block.timestamp;
         _launchBlockNumber = block.number;
+        emit TradingActivated(block.number);
     }
     function _setAutomatedMarketMakerPair(address pair, bool value) private {
         require(automatedMarketMakerPairs[pair] != value, "OrangeTang Inu: Automated market maker pair is already set to that value");
