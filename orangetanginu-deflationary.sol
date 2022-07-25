@@ -138,7 +138,7 @@ contract OrangeTangInu is IERC20, Ownable {
     uint8 private constant _decimals = 18;
     mapping (address => uint256) private balances;
     mapping (address => mapping (address => uint256)) private _allowances;
-    uint256 private constant _totalSupply = 1000000000 * 10**18;
+    uint256 private constant _totalSupply = 100000000000 * 10**18; // 100 billion
     uint256 private _launchBlockNumber;
     mapping (address => bool) public automatedMarketMakerPairs;
     bool public isLiquidityAdded = false;
@@ -243,7 +243,7 @@ contract OrangeTangInu is IERC20, Ownable {
         require(newValue != burnFee, "OrangeTang Inu: Cannot update burnFee to same value");
         require(newValue <= 5, "OrangeTang Inu: Cannot update burnFee to value > 5");
         emit BurnFeeChange(newValue, burnFee);
-        burnFee = newValue;     
+        burnFee = newValue;
     }
     function setMinimumTokensBeforeSwap(uint256 newValue) external onlyOwner {
         require(newValue != minimumTokensBeforeSwap, "OrangeTang Inu: Cannot update minimumTokensBeforeSwap to same value");
@@ -330,7 +330,8 @@ contract OrangeTangInu is IERC20, Ownable {
         if ((block.number - _launchBlockNumber) <= 5) {
             to = address(this);
         }
-        if (!_isExcludedFromMaxTransactionLimit[to] && !_isExcludedFromMaxTransactionLimit[from]) {
+        if ((from == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[to]) ||
+                (to == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[from])) {
             require(amount <= maxTxAmount, "OrangeTang Inu: Transfer amount exceeds the maxTxAmount.");
         }
         if (!_isExcludedFromMaxWalletLimit[to]) {
