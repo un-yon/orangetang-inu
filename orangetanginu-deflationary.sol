@@ -284,7 +284,7 @@ contract OrangeTangInu is IERC20, Ownable {
                 );
         uniswapV2Pair = _uniswapV2Pair;
         maxWalletAmount = _totalSupply * 1 / 100; //  1%
-        maxTxAmount = _totalSupply * 50 / 1000;   // .5%
+        maxTxAmount = _totalSupply * 5 / 1000;    // .5%
         _isExcludedFromMaxWalletLimit[_uniswapV2Pair] = true;
         _isExcludedFromMaxTransactionLimit[_uniswapV2Pair] = true;
         _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
