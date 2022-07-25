@@ -243,7 +243,7 @@ contract OrangeTangInu is IERC20, Ownable {
         require(newValue != burnFee, "OrangeTang Inu: Cannot update burnFee to same value");
         require(newValue <= 5, "OrangeTang Inu: Cannot update burnFee to value > 5");
         emit BurnFeeChange(newValue, burnFee);
-        burnFee = newValue;
+        burnFee = newValue;     
     }
     function setMinimumTokensBeforeSwap(uint256 newValue) external onlyOwner {
         require(newValue != minimumTokensBeforeSwap, "OrangeTang Inu: Cannot update minimumTokensBeforeSwap to same value");
@@ -283,8 +283,8 @@ contract OrangeTangInu is IERC20, Ownable {
                 uniswapV2Router.WETH()
                 );
         uniswapV2Pair = _uniswapV2Pair;
-        maxWalletAmount = _totalSupply * 2 / 100; // 2%
-        maxTxAmount = _totalSupply * 2 / 100;     // 2%
+        maxWalletAmount = _totalSupply * 1 / 100; //  1%
+        maxTxAmount = _totalSupply * 50 / 1000;   // .5%
         _isExcludedFromMaxWalletLimit[_uniswapV2Pair] = true;
         _isExcludedFromMaxTransactionLimit[_uniswapV2Pair] = true;
         _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
