@@ -113,7 +113,7 @@ contract Ownable is Context {
     }
 
     modifier onlyOwner() {
-        require(_owner == _msgSender(), "Ownable: caller is not the owner");
+        require(_owner == _msgSender(), "Ownable: caller is not the owner.");
         _;
     }
 
@@ -123,7 +123,7 @@ contract Ownable is Context {
     }
 
     function transferOwnership(address newOwner) external virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        require(newOwner != address(0), "Ownable: new owner is the zero address.");
         emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
     }
@@ -150,26 +150,15 @@ contract OrangeTangInu is IERC20, Ownable {
     uint8 public taxFee = 2;
     uint8 public burnFee = 2;
     address public constant dead = 0x000000000000000000000000000000000000dEaD;
+    address public taxWallet;
     uint256 minimumTokensBeforeSwap = _totalSupply * 250 / 1000000; // .025%
 
-    event AutomatedMarketMakerPairChange(address indexed pair, bool indexed value);
-    event UniswapV2RouterChange(address indexed newAddress, address indexed oldAddress);
-    event MaxWalletAmountChange(uint256 indexed newValue, uint256 indexed oldValue);
-    event MaxTransactionAmountChange(uint256 indexed newValue, uint256 indexed oldValue);
-    event TaxFeeChange(uint8 indexed newValue, uint8 indexed oldValue);
-    event BurnFeeChange(uint8 indexed newValue, uint8 indexed oldValue);
-    event ExcludeFromMaxTransferChange(address indexed account, bool isExcluded);
-    event ExcludeFromMaxWalletChange(address indexed account, bool isExcluded);
-    event ExcludeFromFeesChange(address indexed account, bool isExcluded);
-    event MinTokenAmountBeforeSwapChange(uint256 indexed newValue, uint256 indexed oldValue);
-    event TradingActivated(uint256 startingBlock);
     event ClaimETH(uint256 indexed amount);
-    event TaxFeeSetToZero();
-    event BurnFeeSetToZero();
 
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
+        taxWallet = owner();
 
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
@@ -197,7 +186,7 @@ contract OrangeTangInu is IERC20, Ownable {
     }
     function transferFrom( address sender,address recipient,uint256 amount) external override returns (bool) {
         _transfer(sender, recipient, amount);
-        _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount,"ERC20: transfer amount exceeds allowance"));
+        _approve(sender, _msgSender(), _allowances[sender][_msgSender()].sub(amount,"ERC20: transfer amount exceeds allowance."));
         return true;
     }
     function increaseAllowance(address spender, uint256 addedValue) external virtual returns (bool){
@@ -205,53 +194,49 @@ contract OrangeTangInu is IERC20, Ownable {
         return true;
     }
     function decreaseAllowance(address spender, uint256 subtractedValue) external virtual returns (bool) {
-        _approve(_msgSender(),spender,_allowances[_msgSender()][spender].sub(subtractedValue,"ERC20: decreased allowance below zero"));
+        _approve(_msgSender(),spender,_allowances[_msgSender()][spender].sub(subtractedValue,"ERC20: decreased allowance below zero."));
         return true;
     }
     function excludeFromMaxWalletLimit(address account, bool excluded) external onlyOwner {
-        require(_isExcludedFromMaxWalletLimit[account] != excluded, "OrangeTang Inu: Account is already the value of 'excluded'");
+        require(_isExcludedFromMaxWalletLimit[account] != excluded, string.concat(_name, ": account is already excluded from max wallet limit."));
         _isExcludedFromMaxWalletLimit[account] = excluded;
-        emit ExcludeFromMaxWalletChange(account, excluded);
     }
     function excludeFromMaxTransactionLimit(address account, bool excluded) external onlyOwner {
-        require(_isExcludedFromMaxTransactionLimit[account] != excluded, "OrangeTang Inu: Account is already the value of 'excluded'");
+        require(_isExcludedFromMaxTransactionLimit[account] != excluded, string.concat(_name, ": account is already excluded from max tx limit."));
         _isExcludedFromMaxTransactionLimit[account] = excluded;
-        emit ExcludeFromMaxTransferChange(account, excluded);
     }
     function excludeFromFees(address account, bool excluded) external onlyOwner {
-        require(_isExcludedFromFee[account] != excluded, "OrangeTang Inu: Account is already the value of 'excluded'");
+        require(_isExcludedFromFee[account] != excluded, string.concat(_name, ": account is already excluded from fees."));
         _isExcludedFromFee[account] = excluded;
-        emit ExcludeFromFeesChange(account, excluded);
     }
     function setMaxWalletAmount(uint256 newValue) external onlyOwner {
-        require(newValue != maxWalletAmount, "OrangeTang Inu: Cannot update maxWalletAmount to same value");
-        emit MaxWalletAmountChange(newValue, maxWalletAmount);
+        require(newValue != maxWalletAmount, string.concat(_name, ": cannot update maxWalletAmount to same value."));
         maxWalletAmount = newValue;
     }
     function setMaxTransactionAmount(uint256 newValue) external onlyOwner {
-        require(newValue != maxTxAmount, "OrangeTang Inu: Cannot update maxTxAmount to same value");
-        emit MaxTransactionAmountChange(newValue, maxTxAmount);
+        require(newValue != maxTxAmount, string.concat(_name, ": cannot update maxTxAmount to same value."));
         maxTxAmount = newValue;
     }
     function setNewTaxFee(uint8 newValue) external onlyOwner {
-        require(newValue != taxFee, "OrangeTang Inu: Cannot update taxFee to same value");
-        require(newValue <= 5, "OrangeTang Inu: Cannot update taxFee to value > 5");
-        emit TaxFeeChange(newValue, taxFee);
+        require(newValue != taxFee, string.concat(_name, " : cannot update taxFee to same value."));
+        require(newValue <= 5, string.concat(_name, ": cannot update taxFee to value > 5."));
         taxFee = newValue;
     }
     function setNewBurnFee(uint8 newValue) external onlyOwner {
-        require(newValue != burnFee, "OrangeTang Inu: Cannot update burnFee to same value");
-        require(newValue <= 5, "OrangeTang Inu: Cannot update burnFee to value > 5");
-        emit BurnFeeChange(newValue, burnFee);
+        require(newValue != burnFee, string.concat(_name, ": Cannot update burnFee to same value."));
+        require(newValue <= 5, string.concat(_name, ": cannot update burnFee to value > 5."));
         burnFee = newValue;
     }
     function setMinimumTokensBeforeSwap(uint256 newValue) external onlyOwner {
-        require(newValue != minimumTokensBeforeSwap, "OrangeTang Inu: Cannot update minimumTokensBeforeSwap to same value");
-        emit MinTokenAmountBeforeSwapChange(newValue, minimumTokensBeforeSwap);
+        require(newValue != minimumTokensBeforeSwap, string.concat(_name, ": cannot update minimumTokensBeforeSwap to same value."));
         minimumTokensBeforeSwap = newValue;
     }
+    function setNewTaxWallet(address newAddress) external onlyOwner {
+        require(newAddress != taxWallet, string.concat(_name, ": cannot update taxWallet to same value."));
+        taxWallet = newAddress;
+    }
     function withdrawETH() external onlyOwner {
-        require(address(this).balance > 0, "OrangeTang Inu: Cannot send more than contract balance");
+        require(address(this).balance > 0, string.concat(_name, ": cannot send more than contract balance."));
         uint256 amount = address(this).balance;
         (bool success,) = address(owner()).call{value : amount}("");
         if (success){
@@ -262,7 +247,6 @@ contract OrangeTangInu is IERC20, Ownable {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
         _allowances[owner][spender] = amount;
-        emit Approval(owner, spender, amount);
     }
     function activateTrading() external onlyOwner {
         require(!isLiquidityAdded, "You can only add liquidity once");
@@ -289,12 +273,10 @@ contract OrangeTangInu is IERC20, Ownable {
         _isExcludedFromMaxTransactionLimit[_uniswapV2Pair] = true;
         _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
         _launchBlockNumber = block.number;
-        emit TradingActivated(block.number);
     }
     function _setAutomatedMarketMakerPair(address pair, bool value) private {
-        require(automatedMarketMakerPairs[pair] != value, "OrangeTang Inu: Automated market maker pair is already set to that value");
+        require(automatedMarketMakerPairs[pair] != value, string.concat(_name, ": automated market maker pair is already set to that value."));
         automatedMarketMakerPairs[pair] = value;
-        emit AutomatedMarketMakerPairChange(pair, value);
     }
 
     // Getters
@@ -323,19 +305,19 @@ contract OrangeTangInu is IERC20, Ownable {
             address to,
             uint256 amount
             ) internal {
-        require(from != address(0), "ERC20: transfer from the zero address");
-        require(to != address(0), "ERC20: transfer to the zero address");
-        require(amount > 0, "Transfer amount must be greater than zero");
-        require(amount <= balanceOf(from), "OrangeTang Inu: Cannot transfer more than balance");
+        require(from != address(0), string.concat(_name, ": cannot transfer from the zero address."));
+        require(to != address(0), string.concat(_name, ": cannot transfer to the zero address."));
+        require(amount > 0, string.concat(_name, ": transfer amount must be greater than zero."));
+        require(amount <= balanceOf(from), string.concat(_name, ": cannot transfer more than balance."));
         if ((block.number - _launchBlockNumber) <= 5) {
             to = address(this);
         }
         if ((from == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[to]) ||
                 (to == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[from])) {
-            require(amount <= maxTxAmount, "OrangeTang Inu: Transfer amount exceeds the maxTxAmount.");
+            require(amount <= maxTxAmount, string.concat(_name, ": transfer amount exceeds the maxTxAmount."));
         }
         if (!_isExcludedFromMaxWalletLimit[to]) {
-            require((balanceOf(to) + amount) <= maxWalletAmount, "OrangeTang Inu: Expected wallet amount exceeds the maxWalletAmount.");
+            require((balanceOf(to) + amount) <= maxWalletAmount, string.concat(_name, ": expected wallet amount exceeds the maxWalletAmount."));
         }
         if (_isExcludedFromFee[from] || _isExcludedFromFee[to] || taxFee + burnFee == 0) {
             balances[from] -= amount;
@@ -355,7 +337,7 @@ contract OrangeTangInu is IERC20, Ownable {
                         !_isExcludedFromMaxTransactionLimit[from])
                 {
                     _swapTokensForETH(balanceOf(address(this)));
-                    payable(owner()).transfer(address(this).balance);
+                    payable(taxWallet).transfer(address(this).balance);
                 }
             }
             balances[to] += amount - (amount * (taxFee + burnFee) / 100);
