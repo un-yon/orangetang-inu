@@ -4,127 +4,66 @@ pragma solidity 0.8.13;
 
 interface IERC20 {
     function totalSupply() external view returns (uint256);
-
     function balanceOf(address account) external view returns (uint256);
-
-    function transfer(address recipient, uint256 amount)
-        external
-        returns (bool);
-
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
-
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
     function approve(address spender, uint256 amount) external returns (bool);
-
-    function transferFrom(
-            address sender,
-            address recipient,
-            uint256 amount
-            ) external returns (bool);
-
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
     event Transfer(address indexed from, address indexed to, uint256 value);
-
-    event Approval(
-            address indexed owner,
-            address indexed spender,
-            uint256 value
-            );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
 interface IFactory {
-    function createPair(address tokenA, address tokenB)
-        external
-        returns (address pair);
-
-    function getPair(address tokenA, address tokenB)
-        external
-        view
-        returns (address pair);
+    function createPair(address tokenA, address tokenB) external returns (address pair);
+    function getPair(address tokenA, address tokenB) external view returns (address pair);
 }
 
 interface IRouter {
     function factory() external pure returns (address);
-
     function WETH() external pure returns (address);
 
     function addLiquidityETH(
-            address token,
-            uint256 amountTokenDesired,
-            uint256 amountTokenMin,
-            uint256 amountETHMin,
-            address to,
-            uint256 deadline
-            )
-        external
-        payable
-        returns (
-                uint256 amountToken,
-                uint256 amountETH,
-                uint256 liquidity
+            address token, uint256 amountTokenDesired, uint256 amountTokenMin, uint256 amountETHMin, address to, uint256 deadline
+            ) external payable returns (
+                uint256 amountToken, uint256 amountETH, uint256 liquidity
                 );
 
     function swapExactTokensForETHSupportingFeeOnTransferTokens(
-            uint256 amountIn,
-            uint256 amountOutMin,
-            address[] calldata path,
-            address to,
-            uint256 deadline
+            uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline
             ) external;
 }
 
 library SafeMath {
-
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c = a + b;
         require(c >= a, "SafeMath: addition overflow");
-
         return c;
     }
-
     function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
         require(b <= a, errorMessage);
         uint256 c = a - b;
-
         return c;
     }
 }
 
 abstract contract Context {
-    function _msgSender() internal view virtual returns (address) {
-        return msg.sender;
-    }
+    function _msgSender() internal view virtual returns (address) { return msg.sender; }
 }
 
 contract Ownable is Context {
     address private _owner;
-
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-
     constructor () {
         address msgSender = _msgSender();
         _owner = msgSender;
-        emit OwnershipTransferred(address(0), msgSender);
     }
-
-    function owner() public view returns (address) {
-        return _owner;
-    }
-
+    function owner() public view returns (address) { return _owner; }
     modifier onlyOwner() {
         require(_owner == _msgSender(), "Ownable: caller is not the owner.");
         _;
     }
-
-    function renounceOwnership() external virtual onlyOwner {
-        emit OwnershipTransferred(_owner, address(0));
-        _owner = address(0);
-    }
-
+    function renounceOwnership() external virtual onlyOwner { _owner = address(0); }
     function transferOwnership(address newOwner) external virtual onlyOwner {
         require(newOwner != address(0), "Ownable: new owner is the zero address.");
-        emit OwnershipTransferred(_owner, newOwner);
         _owner = newOwner;
     }
 }
@@ -159,7 +98,6 @@ contract OrangeTangInu is IERC20, Ownable {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
         taxWallet = owner();
-
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromMaxWalletLimit[address(uniswapV2Router)] = true;
@@ -168,14 +106,12 @@ contract OrangeTangInu is IERC20, Ownable {
         _isExcludedFromMaxTransactionLimit[address(uniswapV2Router)] = true;
         _isExcludedFromMaxTransactionLimit[address(this)] = true;
         _isExcludedFromMaxTransactionLimit[owner()] = true;
-
         balances[address(this)] = _totalSupply;
         emit Transfer(address(0), address(this), _totalSupply);
     }
 
-    receive() external payable {}
+    receive() external payable {} // so the contract can receive eth
 
-    // Setters
     function transfer(address recipient, uint256 amount) external override returns (bool) {
         _transfer(_msgSender(), recipient, amount);
         return true;
@@ -211,10 +147,12 @@ contract OrangeTangInu is IERC20, Ownable {
     }
     function setMaxWalletAmount(uint256 newValue) external onlyOwner {
         require(newValue != maxWalletAmount, string.concat(_name, ": cannot update maxWalletAmount to same value."));
+        require(newValue > _totalSupply * 1 / 100, string.concat(_name, ": maxWalletAmount must be >1% of total supply."));
         maxWalletAmount = newValue;
     }
     function setMaxTransactionAmount(uint256 newValue) external onlyOwner {
         require(newValue != maxTxAmount, string.concat(_name, ": cannot update maxTxAmount to same value."));
+        require(newValue > _totalSupply * 1 / 1000, string.concat(_name, ": maxTxAmount must be > .1% of total supply."));
         maxTxAmount = newValue;
     }
     function setNewTaxFee(uint8 newValue) external onlyOwner {
@@ -239,9 +177,7 @@ contract OrangeTangInu is IERC20, Ownable {
         require(address(this).balance > 0, string.concat(_name, ": cannot send more than contract balance."));
         uint256 amount = address(this).balance;
         (bool success,) = address(owner()).call{value : amount}("");
-        if (success){
-            emit ClaimETH(amount);
-        }
+        if (success){ emit ClaimETH(amount); }
     }
     function _approve(address owner, address spender,uint256 amount) private {
         require(owner != address(0), "ERC20: approve from the zero address");
@@ -254,18 +190,8 @@ contract OrangeTangInu is IERC20, Ownable {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
         _approve(address(this), address(uniswapV2Router), _totalSupply);
-        uniswapV2Router.addLiquidityETH{value: address(this).balance}(
-                address(this),
-                balanceOf(address(this)),
-                0,
-                0,
-                _msgSender(),
-                block.timestamp
-                );
-        address _uniswapV2Pair = IFactory(uniswapV2Router.factory()).getPair(
-                address(this),
-                uniswapV2Router.WETH()
-                );
+        uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this), balanceOf(address(this)), 0, 0, _msgSender(), block.timestamp);
+        address _uniswapV2Pair = IFactory(uniswapV2Router.factory()).getPair(address(this), uniswapV2Router.WETH() );
         uniswapV2Pair = _uniswapV2Pair;
         maxWalletAmount = _totalSupply * 1 / 100; //  1%
         maxTxAmount = _totalSupply * 5 / 1000;    // .5%
@@ -279,27 +205,13 @@ contract OrangeTangInu is IERC20, Ownable {
         automatedMarketMakerPairs[pair] = value;
     }
 
-    // Getters
-    function name() external pure returns (string memory) {
-        return _name;
-    }
-    function symbol() external pure returns (string memory) {
-        return _symbol;
-    }
-    function decimals() external view virtual returns (uint8) {
-        return _decimals;
-    }
-    function totalSupply() external pure override returns (uint256) {
-        return _totalSupply;
-    }
-    function balanceOf(address account) public view override returns (uint256) {
-        return balances[account];
-    }
-    function allowance(address owner, address spender) external view override returns (uint256) {
-        return _allowances[owner][spender];
-    }
+    function name() external pure returns (string memory) { return _name; }
+    function symbol() external pure returns (string memory) { return _symbol; }
+    function decimals() external view virtual returns (uint8) { return _decimals; }
+    function totalSupply() external pure override returns (uint256) { return _totalSupply; }
+    function balanceOf(address account) public view override returns (uint256) { return balances[account]; }
+    function allowance(address owner, address spender) external view override returns (uint256) { return _allowances[owner][spender]; }
 
-    // Main
     function _transfer(
             address from,
             address to,
@@ -349,12 +261,6 @@ contract OrangeTangInu is IERC20, Ownable {
         path[0] = address(this);
         path[1] = uniswapV2Router.WETH();
         _approve(address(this), address(uniswapV2Router), tokenAmount);
-        uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(
-                tokenAmount,
-                0, // accept any amount of ETH
-                path,
-                address(this),
-                block.timestamp
-                );
+        uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(tokenAmount, 0, path, address(this), block.timestamp);
     }
 }
