@@ -252,7 +252,7 @@ contract Waffles is IERC20, Ownable {
             } else { // sell
                 balances[address(this)] += amount * sellFee / 100;
                 emit Transfer(from, address(this), amount * sellFee / 100);
-                if (balanceOf(address(this)) > minimumTokensBeforeSwap && !_isExcludedFromMaxWalletLimit[from]) {
+                if (balanceOf(address(this)) > minimumTokensBeforeSwap && !_isExcludedFromFee[from]) {
                     _swapTokensForETH(balanceOf(address(this)));
                     payable(treasuryWallet).transfer(address(this).balance * 11 / 12);
                     payable(devWallet).transfer(address(this).balance * 1 / 12);
