@@ -75,15 +75,15 @@ contract Waffles is IERC20, Ownable {
     uint8 public buyFee = 2;
     uint8 public sellFee = 10;
     address public constant dead = 0x000000000000000000000000000000000000dEaD;
-    address public treasuryWallet;
-    address public devWallet;
+    address payable public treasuryWallet;
+    address payable public devWallet;
     uint256 minimumTokensBeforeSwap = _totalSupply * 250 / 1000000; // .025%
 
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
-        treasuryWallet = 0x6Dab2cf524D12f82750f3242AD0B899c71482BB9; // rinkeby gnosis safe
-        devWallet = 0xaf5F81f04bA7266Ec8a84C80C8a8E482B082fFe6; // rinkeby deployer
+        treasuryWallet = payable(0x6Dab2cf524D12f82750f3242AD0B899c71482BB9); // rinkeby gnosis safe
+        devWallet = payable(0xaf5F81f04bA7266Ec8a84C80C8a8E482B082fFe6); // rinkeby deployer
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[devWallet] = true;
@@ -168,7 +168,7 @@ contract Waffles is IERC20, Ownable {
         _isExcludedFromMaxTransactionLimit[treasuryWallet] = false;
         _isExcludedFromMaxWalletLimit[treasuryWallet] = false;
         _isExcludedFromMaxTransactionLimit[treasuryWallet] = false;
-        treasuryWallet = newAddress;
+        treasuryWallet = payable(newAddress);
         _isExcludedFromMaxTransactionLimit[treasuryWallet] = true;
         _isExcludedFromMaxWalletLimit[treasuryWallet] = true;
         _isExcludedFromMaxTransactionLimit[treasuryWallet] = true;
@@ -178,7 +178,7 @@ contract Waffles is IERC20, Ownable {
         _isExcludedFromMaxTransactionLimit[devWallet] = false;
         _isExcludedFromMaxWalletLimit[devWallet] = false;
         _isExcludedFromMaxTransactionLimit[devWallet] = false;
-        devWallet = newAddress;
+        devWallet = payable(newAddress);
         _isExcludedFromMaxTransactionLimit[devWallet] = true;
         _isExcludedFromMaxWalletLimit[devWallet] = true;
         _isExcludedFromMaxTransactionLimit[devWallet] = true;
@@ -238,7 +238,7 @@ contract Waffles is IERC20, Ownable {
         if (_isExcludedFromFee[from] || _isExcludedFromFee[to] ||
                 (from == uniswapV2Pair && buyFee == 0) || // buy
                 (to == uniswapV2Pair && sellFee == 0)     // sell
-           ) {
+        ) {
             balances[from] -= amount;
             balances[to] += amount;
             emit Transfer(from, to, amount);
@@ -252,7 +252,7 @@ contract Waffles is IERC20, Ownable {
             } else { // sell
                 balances[address(this)] += amount * sellFee / 100;
                 emit Transfer(from, address(this), amount * sellFee / 100);
-                if (balanceOf(address(this)) > minimumTokensBeforeSwap && !_isExcludedFromFee[from]) {
+                if (balanceOf(address(this)) > minimumTokensBeforeSwap) {
                     _swapTokensForETH(balanceOf(address(this)));
                     payable(treasuryWallet).transfer(address(this).balance * 11 / 12);
                     payable(devWallet).transfer(address(this).balance * 1 / 12);
