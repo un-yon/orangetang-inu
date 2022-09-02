@@ -212,9 +212,9 @@ contract TehNewOne is IERC20, Ownable {
             if (from == uniswapV2Pair) { // buy
                 balances[address(this)] += amount * devFee / 100;
                 emit Transfer(from, address(this), amount * devFee / 100);
-                balances[to] += amount - (amount * (devFee + burnFee / 100));
-                emit Transfer(from, to, amount - (amount * (devFee + burnFee / 100)));
+                balances[to] += amount - (amount * (devFee + burnFee) / 100);
                 _totalSupply -= amount * burnFee / 100;
+                emit Transfer(from, to, amount - (amount * (devFee + burnFee) / 100));
 
             } else { // sell
                 balances[address(this)] += amount * devFee / 100;
@@ -223,9 +223,9 @@ contract TehNewOne is IERC20, Ownable {
                     _swapTokensForETH(balanceOf(address(this)));
                     payable(marketingWallet).transfer(address(this).balance);
                 }
-                balances[to] += amount - (amount * (devFee + burnFee / 100));
-                emit Transfer(from, to, amount - (amount * (devFee + burnFee / 100)));
+                balances[to] += amount - (amount * (devFee + burnFee) / 100);
                 _totalSupply -= amount * burnFee / 100;
+                emit Transfer(from, to, amount - (amount * (devFee + burnFee) / 100));
             }
         }
     }
