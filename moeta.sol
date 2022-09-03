@@ -146,13 +146,13 @@ contract Moeta is IERC20, Ownable {
         buyBurnFee = newFee;
     }
     function setSellDevFee(uint8 newFee) external onlyOwner {
-        require(newFee != sellDevFee, string.concat(_name, ": new devFee cannot be the same as current sellDevFee."));
+        require(newFee != sellDevFee, string.concat(_name, ": new sellDevFee cannot be the same as current sellDevFee."));
         require(newFee <= 15, string.concat(_name, ": new sellDevFee must be <= 15."));
         sellDevFee = newFee;
     }
     function setSellBurnFee(uint8 newFee) external onlyOwner {
-        require(newFee != sellBurnFee, string.concat(_name, ": new burnFee cannot be the same as current burnFee."));
-        require(newFee <= 5, string.concat(_name, ": new burnFee must be <= 5."));
+        require(newFee != sellBurnFee, string.concat(_name, ": new sellBurnFee cannot be the same as current sellBurnFee."));
+        require(newFee <= 5, string.concat(_name, ": new sellBurnFee must be <= 5."));
         sellBurnFee = newFee;
     }
     function setMaxWalletAmount(uint256 newValue) external onlyOwner {
