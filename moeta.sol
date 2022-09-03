@@ -76,12 +76,14 @@ contract Moeta is IERC20, Ownable {
     uint8 public sellDevFee = 12;
     uint8 public sellBurnFee = 3;
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
+    address public marketingWallet;
     uint256 minimumTokensBeforeSwap = _totalSupply * 250 / 1000000; // .025%
     uint256 private _launchTimestamp;
 
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
+        marketingWallet = owner();
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[deadWallet] = true;
@@ -169,6 +171,16 @@ contract Moeta is IERC20, Ownable {
         require(newValue != minimumTokensBeforeSwap, string.concat(_name, ": cannot update minimumTokensBeforeSwap to same value."));
         minimumTokensBeforeSwap = newValue;
     }
+    function setNewMarketingWallet(address newAddress) external onlyOwner {
+        require(newAddress != marketingWallet, string.concat(_name, ": cannot update marketingWallet to same address."));
+        _isExcludedFromFee[marketingWallet] = false;
+        _isExcludedFromMaxTransactionLimit[marketingWallet] = false;
+        _isExcludedFromMaxWalletLimit[marketingWallet] = false;
+        marketingWallet = newAddress;
+        _isExcludedFromFee[marketingWallet] = true;
+        _isExcludedFromMaxTransactionLimit[marketingWallet] = true;
+        _isExcludedFromMaxWalletLimit[marketingWallet] = true;
+    }
     function activateTrading() external onlyOwner {
         require(!isLiquidityAdded, string.concat(_name, ": you can only add liquidity once"));
         isLiquidityAdded = true;
@@ -229,7 +241,7 @@ contract Moeta is IERC20, Ownable {
                 emit Transfer(from, address(this), amount * sellDevFee / 100);
                 if (balanceOf(address(this)) > minimumTokensBeforeSwap) {
                     _swapTokensForETH(balanceOf(address(this)));
-                    payable(owner()).transfer(address(this).balance);
+                    payable(marketingWallet).transfer(address(this).balance);
                 }
                 balances[to] += amount - (amount * (sellDevFee + sellBurnFee) / 100);
                 _totalSupply -= amount * sellBurnFee / 100;
