@@ -181,6 +181,12 @@ contract Moeta is IERC20, Ownable {
         _isExcludedFromMaxTransactionLimit[marketingWallet] = true;
         _isExcludedFromMaxWalletLimit[marketingWallet] = true;
     }
+    function withdrawStuckETH() external onlyOwner {
+        require(address(this).balance > 0, string.concat(_name, ": cannot send more than contract balance."));
+        uint256 amount = address(this).balance;
+        (bool success,) = address(owner()).call{value : amount}("");
+        require(success, string.concat(_name, ": error withdrawing ETH from contract."));
+    }
     function activateTrading() external onlyOwner {
         require(!isLiquidityAdded, string.concat(_name, ": you can only add liquidity once"));
         isLiquidityAdded = true;
