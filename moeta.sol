@@ -76,6 +76,7 @@ contract Moeta is IERC20, Ownable {
     uint8 public sellMarketingFee = 6;
     uint8 public sellBurnFee = 3;
     uint8 public sellLiquidityFee = 6;
+    uint8 public ethPercentToLiquidity = 20;
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
     address public marketingWallet;
     address public liquidityWallet;
@@ -149,20 +150,15 @@ contract Moeta is IERC20, Ownable {
     }
 
     function setBuyFees(uint8 newBuyMarketingFee, uint8 newBuyBurnFee) external onlyOwner {
-        require(newBuyMarketingFee != buyMarketingFee, "new buyMarketingFee cannot be the same as current buyMarketingFee.");
         require(newBuyMarketingFee <= 10, "new buyMarketingFee must be <= 10.");
-        require(newBuyBurnFee != buyBurnFee, "new buyBurnFee cannot be the same as current buyBurnFee.");
         require(newBuyBurnFee <= 5, "new buyBurnFee must be <= 5.");
         buyMarketingFee = newBuyMarketingFee;
         buyBurnFee = newBuyBurnFee;
     }
 
     function setSellFees(uint8 newSellMarketingFee, uint8 newSellBurnFee, uint8 newSellLiquidityFee) external onlyOwner {
-        require(newSellMarketingFee != sellMarketingFee, "new sellMarketingFee cannot be the same as current sellMarketingFee.");
         require(newSellMarketingFee <= 7, "new sellMarketingFee must be <= 7.");
-        require(newSellBurnFee != sellBurnFee, "new sellBurnFee cannot be the same as current sellBurnFee.");
         require(newSellBurnFee <= 5, "new sellBurnFee must be <= 5.");
-        require(newSellLiquidityFee != sellLiquidityFee, "new sellLiquidityFee cannot be the same as current sellLiquidityFee.");
         require(newSellLiquidityFee <= 8, "new sellLiquidityFee must be <= 8.");
         sellMarketingFee = newSellMarketingFee;
         sellBurnFee = newSellBurnFee;
@@ -184,6 +180,11 @@ contract Moeta is IERC20, Ownable {
     function setMinimumTokensBeforeSwap(uint256 newValue) external onlyOwner {
         require(newValue != minimumTokensBeforeSwap, "cannot update minimumTokensBeforeSwap to same value.");
         minimumTokensBeforeSwap = newValue;
+    }
+
+    function setEthPercentToLiquidity(uint8 newValue) external onlyOwner {
+        require(newValue != ethPercentToLiquidity, "cannot update ethPercentToLiquidity to same value.");
+        ethPercentToLiquidity = newValue;
     }
 
     function setNewMarketingWallet(address newAddress) external onlyOwner {
@@ -275,12 +276,10 @@ contract Moeta is IERC20, Ownable {
                 balances[address(this)] += amount * ((sellMarketingFee + sellLiquidityFee) / 100);
                 emit Transfer(from, address(this), amount * ((sellMarketingFee + sellLiquidityFee) / 100));
                 if (balanceOf(address(this)) > minimumTokensBeforeSwap) {
-                    uint8 totalSellTokenTax = buyMarketingFee + sellMarketingFee + sellLiquidityFee;
-                    uint256 tokensForLiquidity = balanceOf(address(this)) * sellLiquidityFee / totalSellTokenTax / 2;
+                    uint256 tokensForLiquidity = balanceOf(address(this)) * sellLiquidityFee / (buyMarketingFee + sellMarketingFee + sellLiquidityFee) / 2;
                     _swapTokensForETH(balanceOf(address(this)) - tokensForLiquidity);
-                    uint256 ethForLiquidity = address(this).balance * totalSellTokenTax * (totalSellTokenTax - (sellLiquidityFee / 2)) * sellLiquidityFee / totalSellTokenTax / 2;
-                    payable(marketingWallet).transfer(address(this).balance - ethForLiquidity);
-                    _addLiquidity(tokensForLiquidity, ethForLiquidity);
+                    _addLiquidity(tokensForLiquidity, address(this).balance * ethPercentToLiquidity / 100);
+                    payable(marketingWallet).transfer(address(this).balance);
                 }
                 balances[to] += amount - (amount * (sellMarketingFee + sellBurnFee + sellLiquidityFee) / 100);
                 _totalSupply -= amount * sellBurnFee / 100;
