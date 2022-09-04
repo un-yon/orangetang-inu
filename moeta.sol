@@ -277,7 +277,7 @@ contract Moeta is IERC20, Ownable {
                 if (balanceOf(address(this)) > minimumTokensBeforeSwap) {
                     uint256 tokensForLiquidity = (balanceOf(address(this)) * sellLiquidityFee / (buyMarketingFee + sellMarketingFee + sellLiquidityFee)) / 2;
                     _swapTokensForETH(balanceOf(address(this)) - tokensForLiquidity);
-                    uint256 ethForLiquidity = (address(this).balance * sellLiquidityFee / (buyMarketingFee + sellMarketingFee + sellLiquidityFee)) / 2;
+                    uint256 ethForLiquidity = (address(this).balance * (100 / (100 - sellLiquidityFee)) * (sellLiquidityFee / (buyMarketingFee + sellMarketingFee + sellLiquidityFee))) / 2;
                     payable(marketingWallet).transfer(address(this).balance - ethForLiquidity);
                     _addLiquidity(tokensForLiquidity, ethForLiquidity);
                 }
@@ -297,14 +297,14 @@ contract Moeta is IERC20, Ownable {
     }
 
     function _addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
-        _approve(address(this), address(uniswapV2Router), tokenAmount);
-        uniswapV2Router.addLiquidityETH{value: ethAmount}(
-                address(this),
-                tokenAmount,
-                0, // slippage is unavoidable
-                0, // slippage is unavoidable
-                liquidityWallet,
-                block.timestamp
-                );
+		_approve(address(this), address(uniswapV2Router), tokenAmount);
+		uniswapV2Router.addLiquidityETH{value: ethAmount}(
+		address(this),
+		tokenAmount,
+		0, // slippage is unavoidable
+		0, // slippage is unavoidable
+		liquidityWallet,
+		block.timestamp
+		);
     }
 }
