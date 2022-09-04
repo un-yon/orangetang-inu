@@ -275,9 +275,9 @@ contract Moeta is IERC20, Ownable {
                 balances[address(this)] += amount * ((sellMarketingFee + sellLiquidityFee) / 100);
                 emit Transfer(from, address(this), amount * ((sellMarketingFee + sellLiquidityFee) / 100));
                 if (balanceOf(address(this)) > minimumTokensBeforeSwap) {
-                    uint256 tokensForLiquidity = balanceOf(address(this)) * sellLiquidityFee / (buyMarketingFee + sellMarketingFee + sellLiquidityFee);
+                    uint256 tokensForLiquidity = (balanceOf(address(this)) * sellLiquidityFee / (buyMarketingFee + sellMarketingFee + sellLiquidityFee)) / 2;
                     _swapTokensForETH(balanceOf(address(this)) - tokensForLiquidity);
-                    uint256 ethForLiquidity = address(this).balance * sellLiquidityFee / (buyMarketingFee + sellMarketingFee + sellLiquidityFee);
+                    uint256 ethForLiquidity = (address(this).balance * sellLiquidityFee / (buyMarketingFee + sellMarketingFee + sellLiquidityFee)) / 2;
                     payable(marketingWallet).transfer(address(this).balance - ethForLiquidity);
                     _addLiquidity(tokensForLiquidity, ethForLiquidity);
                 }
