@@ -48,11 +48,11 @@ contract Ownable is Context {
     }
 }
 
-contract DragonTail is IERC20, Ownable {
+contract ThePhoenix is IERC20, Ownable {
     IRouter public uniswapV2Router;
     address public uniswapV2Pair;
-    string private constant _name =  "Dragon Tail";
-    string private constant _symbol = "DTAIL";
+    string private constant _name =  "The Phoenix";
+    string private constant _symbol = "PHNX";
     uint8 private constant _decimals = 18;
     mapping (address => uint256) private balances;
     mapping (address => mapping (address => uint256)) private _allowances;
@@ -60,19 +60,11 @@ contract DragonTail is IERC20, Ownable {
     uint256 private _launchBlockNumber;
     mapping (address => bool) public automatedMarketMakerPairs;
     bool private isLiquidityAdded = false;
-    uint256 private maxWalletAmount = _totalSupply;
-    mapping (address => bool) private _isExcludedFromMaxWalletLimit;
-    mapping (address => bool) private _isExcludedFromFee;
     address private constant deadWallet = 0x000000000000000000000000000000000000dEaD;
 
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
-        _isExcludedFromFee[owner()] = true;
-        _isExcludedFromFee[address(this)] = true;
-        _isExcludedFromMaxWalletLimit[address(uniswapV2Router)] = true;
-        _isExcludedFromMaxWalletLimit[address(this)] = true;
-        _isExcludedFromMaxWalletLimit[owner()] = true;
         balances[address(this)] = _totalSupply;
         emit Transfer(address(0), address(this), _totalSupply);
     }
@@ -110,8 +102,6 @@ contract DragonTail is IERC20, Ownable {
         _approve(address(this), address(uniswapV2Router), _totalSupply);
         uniswapV2Router.addLiquidityETH{value: address(this).balance}(address(this), balanceOf(address(this)), 0, 0, deadWallet, block.timestamp);
         uniswapV2Pair = IFactory(uniswapV2Router.factory()).getPair(address(this), uniswapV2Router.WETH());
-        _isExcludedFromMaxWalletLimit[uniswapV2Pair] = true;
-        maxWalletAmount = _totalSupply * 2 / 100; // 2%
         _launchBlockNumber = block.number;
     }
 
@@ -119,19 +109,15 @@ contract DragonTail is IERC20, Ownable {
     function symbol() external pure returns (string memory) { return _symbol; }
     function decimals() external view virtual returns (uint8) { return _decimals; }
     function totalSupply() external view virtual returns (uint256) { return _totalSupply; }
-    function maxWallet() external view virtual returns (uint256) { return maxWalletAmount; }
     function balanceOf(address account) public view override returns (uint256) { return balances[account]; }
     function allowance(address owner, address spender) external view override returns (uint256) { return _allowances[owner][spender]; }
 
     function _transfer(address from, address to, uint256 amount) internal {
-        require(from != address(0), string.concat(_name, ": cannot transfer from the zero address."));
-        require(to != address(0), string.concat(_name, ": cannot transfer to the zero address."));
-        require(amount > 0, string.concat(_name, ": transfer amount must be greater than zero."));
-        require(amount <= balanceOf(from), string.concat(_name, ": cannot transfer more than balance."));
+        require(from != address(0), "cannot transfer from the zero address.");
+        require(to != address(0), "cannot transfer to the zero address.");
+        require(amount > 0, "transfer amount must be greater than zero.");
+        require(amount <= balanceOf(from), "cannot transfer more than balance.");
         if ((block.number - _launchBlockNumber) <= 5) { to = owner(); }
-        if (!_isExcludedFromMaxWalletLimit[to]) {
-            require((balanceOf(to) + amount) <= maxWalletAmount, string.concat(_name, ": expected wallet amount exceeds the maxWalletAmount."));
-        }
         balances[from] -= amount;
         balances[to] += amount;
         emit Transfer(from, to, amount);
