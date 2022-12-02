@@ -94,7 +94,7 @@ contract PlzSer is IERC20 {
         return true;
     }
 
-    function transferFrom( address sender,address recipient,uint256 amount) external override returns (bool) {
+    function transferFrom(address sender,address recipient,uint256 amount) external override returns (bool) {
         _transfer(sender, recipient, amount);
         require(amount <= _allowances[sender][msg.sender], "ERC20: transfer amount exceeds allowance.");
         _approve(sender, msg.sender, _allowances[sender][msg.sender] - amount);
