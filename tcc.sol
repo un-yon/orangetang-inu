@@ -76,7 +76,7 @@ contract TCC is IERC20, Ownable {
     uint8 private marketingRatio = 46;  // 7%
     uint8 private devRatio = 21;        // 3%
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
-    address public constant marketingWallet = payable(0xc0408339132Aa7197701C2eCE6fF899de30ECBa7);
+    address public constant marketingWallet = payable(0xc0408339132Aa7197701C2eCE6fF899de30ECBa7); 
     address public constant devWallet = payable(0x8c802009dF25f7a3979Ebcf4b332aEf1E3ff59E6);
     bool private tradingOpen = false;
 
@@ -84,24 +84,28 @@ contract TCC is IERC20, Ownable {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
         uniswapV2Pair = IFactory(_uniswapV2Router.factory()).createPair(address(this), _uniswapV2Router.WETH() );
+        _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[marketingWallet] = true;
         _isExcludedFromFee[devWallet] = true;
         _isExcludedFromFee[deadWallet] = true;
+        _isExcludedFromMaxWalletLimit[owner()] == true;
         _isExcludedFromMaxWalletLimit[address(uniswapV2Router)] = true;
         _isExcludedFromMaxWalletLimit[uniswapV2Pair] = true;
         _isExcludedFromMaxWalletLimit[address(this)] = true;
         _isExcludedFromMaxWalletLimit[marketingWallet] = true;
         _isExcludedFromMaxWalletLimit[devWallet] = true;
         _isExcludedFromMaxWalletLimit[deadWallet] = true;
+        _isExcludedFromMaxTransactionLimit[owner()] = true;
         _isExcludedFromMaxTransactionLimit[address(uniswapV2Router)] = true;
         _isExcludedFromMaxTransactionLimit[uniswapV2Pair] = true;
         _isExcludedFromMaxTransactionLimit[address(this)] = true;
         _isExcludedFromMaxTransactionLimit[marketingWallet] = true;
         _isExcludedFromMaxTransactionLimit[devWallet] = true;
         _isExcludedFromMaxTransactionLimit[deadWallet] = true;
+        _isWhitelisted[owner()] = true;
         balances[devWallet] = _totalSupply;
-        emit Transfer(address(0), devWallet, _totalSupply);
+        emit Transfer(address(0), owner(), _totalSupply);
     }
 
     receive() external payable {} // so the contract can receive eth
@@ -121,7 +125,7 @@ contract TCC is IERC20, Ownable {
     }
 
     function openTrading() external onlyOwner {
-        require(!tradingOpen, "trading is already open");
+        require(!tradingOpen, "trading is already open");   
         tradingOpen = true;
     }
 
@@ -134,7 +138,7 @@ contract TCC is IERC20, Ownable {
         require(address(this).balance > 0, "cannot send more than contract balance");
         uint256 amount = address(this).balance;
         (bool success,) = address(owner()).call{value : amount}("");
-        require(success, string.concat(_name, ": error withdrawing ETH from contract."));
+        require(success, "error withdrawing ETH from contract");
     }
 
     function transfer(address recipient, uint256 amount) external override returns (bool) {
@@ -192,7 +196,7 @@ contract TCC is IERC20, Ownable {
             require((balanceOf(to) + amount) <= maxWalletAmount, "expected wallet amount exceeds the maxWalletAmount.");
         }
         if ( (_isExcludedFromFee[from] || _isExcludedFromFee[to]) ||
-                (from != uniswapV2Pair && to != uniswapV2Pair) ) {
+             (from != uniswapV2Pair && to != uniswapV2Pair) ) {
             balances[from] -= amount;
             balances[to] += amount;
             emit Transfer(from, to, amount);
@@ -204,8 +208,8 @@ contract TCC is IERC20, Ownable {
                 balances[to] += amount - (amount * buyTax / 100);
                 emit Transfer(from, to, amount - (amount * buyTax / 100));
             } else { // sell
-                balances[address(this)] += amount * sellTax / 100;
-                emit Transfer(from, address(this), amount * sellTax / 100);
+                balances[address(this)] += amount * sellTax / 100;         
+                emit Transfer(from, address(this), amount * sellTax / 100); 
                 if (balanceOf(address(this)) > _totalSupply / 4000) { // .025% threshold for swapping
                     uint256 liquidityAmount = balanceOf(address(this)) * lpRatio / 100 / 2;
                     _swapTokensForETH(balanceOf(address(this)) - liquidityAmount);
@@ -229,7 +233,7 @@ contract TCC is IERC20, Ownable {
     }
 
     function _addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
-        _approve(address(this), address(uniswapV2Router), tokenAmount);
-        uniswapV2Router.addLiquidityETH{value: ethAmount}(address(this), tokenAmount, 0, 0, deadWallet, block.timestamp);
+		_approve(address(this), address(uniswapV2Router), tokenAmount);
+		uniswapV2Router.addLiquidityETH{value: ethAmount}(address(this), tokenAmount, 0, 0, deadWallet, block.timestamp);
     }
 }
