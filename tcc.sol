@@ -131,7 +131,7 @@ contract TCC is IERC20, Ownable {
     }
 
     function withdrawStuckETH() external onlyOwner {
-        require(address(this).balance > 0, string.concat(_name, ": cannot send more than contract balance."));
+        require(address(this).balance > 0, "cannot send more than contract balance");
         uint256 amount = address(this).balance;
         (bool success,) = address(owner()).call{value : amount}("");
         require(success, string.concat(_name, ": error withdrawing ETH from contract."));
