@@ -76,7 +76,7 @@ contract TCC is IERC20, Ownable {
     uint8 private marketingRatio = 46;  // 7%
     uint8 private devRatio = 21;        // 3%
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
-    address public constant marketingWallet = payable(0xc0408339132Aa7197701C2eCE6fF899de30ECBa7);
+    address public constant marketingWallet = payable(0xc0408339132Aa7197701C2eCE6fF899de30ECBa7); 
     address public constant devWallet = payable(0x8c802009dF25f7a3979Ebcf4b332aEf1E3ff59E6);
     bool private tradingOpen = false;
 
@@ -125,7 +125,7 @@ contract TCC is IERC20, Ownable {
     }
 
     function openTrading() external onlyOwner {
-        require(!tradingOpen, "trading is already open");
+        require(!tradingOpen, "trading is already open");   
         tradingOpen = true;
     }
 
@@ -196,31 +196,42 @@ contract TCC is IERC20, Ownable {
             require((balanceOf(to) + amount) <= maxWalletAmount, "expected wallet amount exceeds the maxWalletAmount.");
         }
         if ( (_isExcludedFromFee[from] || _isExcludedFromFee[to]) ||
-                (from != uniswapV2Pair && to != uniswapV2Pair) ) {
+             (from != uniswapV2Pair && to != uniswapV2Pair) || buyTax + sellTax == 0) {
             balances[from] -= amount;
             balances[to] += amount;
             emit Transfer(from, to, amount);
         } else {
             balances[from] -= amount;
             if (from == uniswapV2Pair) { // buy
-                balances[address(this)] += amount * buyTax / 100;
-                emit Transfer(from, address(this), amount * buyTax / 100);
+                if (buyTax > 0) { 
+                    balances[address(this)] += amount * buyTax / 100;
+                    emit Transfer(from, address(this), amount * buyTax / 100);
+                }
                 balances[to] += amount - (amount * buyTax / 100);
                 emit Transfer(from, to, amount - (amount * buyTax / 100));
             } else { // sell
-                balances[address(this)] += amount * sellTax / 100;
-                emit Transfer(from, address(this), amount * sellTax / 100);
+                if (sellTax > 0) {
+                    balances[address(this)] += amount * sellTax / 100;         
+                    emit Transfer(from, address(this), amount * sellTax / 100); 
+                }
                 if (balanceOf(address(this)) > _totalSupply / 4000) { // .025% threshold for swapping
                     uint256 liquidityAmount = balanceOf(address(this)) * lpRatio / 100 / 2;
                     _swapTokensForETH(balanceOf(address(this)) - liquidityAmount);
                     uint256 ethBalance = address(this).balance;
-                    uint256 ethForMarketing = (ethBalance * marketingRatio / 100) + (ethBalance * lpRatio / 100 / 4);
-                    uint256 ethForDev = (ethBalance * devRatio / 100) + (ethBalance * lpRatio / 100 / 4);
-                    uint256 ethForLP = ethBalance * lpRatio / 100 / 2;
-                    _addLiquidity(balanceOf(address(this)), ethForLP);
-                    bool success = false;
-                    (success,) = marketingWallet.call{value: ethForMarketing, gas: 30000}("");
-                    (success,) = devWallet.call{value: ethForDev, gas: 30000}("");
+                    if (lpRatio > 0) {
+                        uint256 ethForLP = (ethBalance * lpRatio / 100 / 2) + (ethBalance * lpRatio / 100 / 6);
+                        _addLiquidity(balanceOf(address(this)), ethForLP);    
+                    }
+                    if (marketingRatio > 0) { 
+                        uint256 ethForMarketing = (ethBalance * marketingRatio / 100) + (ethBalance * lpRatio / 100 / 6);
+                        bool successMarketing = false;
+                        (successMarketing,) = marketingWallet.call{value: ethForMarketing, gas: 30000}(""); 
+                    }
+                    if (devRatio > 0) { 
+                        // uint256 ethForDev = (ethBalance * devRatio / 100) + (ethBalance * lpRatio / 100 / 6); 
+                        bool successDev = false;
+                        (successDev,) = devWallet.call{value: address(this).balance, gas: 30000}(""); 
+                    }
                 }
                 balances[to] += amount - (amount * sellTax / 100);
                 emit Transfer(from, to, amount - (amount * sellTax / 100));
@@ -237,7 +248,7 @@ contract TCC is IERC20, Ownable {
     }
 
     function _addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
-        _approve(address(this), address(uniswapV2Router), tokenAmount);
-        uniswapV2Router.addLiquidityETH{value: ethAmount}(address(this), tokenAmount, 0, 0, deadWallet, block.timestamp);
+		_approve(address(this), address(uniswapV2Router), tokenAmount);
+		uniswapV2Router.addLiquidityETH{value: ethAmount}(address(this), tokenAmount, 0, 0, deadWallet, block.timestamp);
     }
 }
