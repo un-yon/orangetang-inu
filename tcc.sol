@@ -187,10 +187,7 @@ contract TCC is IERC20, Ownable {
         require(to != address(0), "cannot transfer to the zero address.");
         require(amount > 0, "transfer amount must be greater than zero.");
         require(amount <= balanceOf(from), "cannot transfer more than balance.");
-        require( tradingOpen || _isWhitelisted[to] || 
-                 (_isWhitelisted[to] && from == uniswapV2Pair) ||
-                 (_isWhitelisted[from] && to == uniswapV2Pair), 
-                 "trading is not open yet");
+        require(tradingOpen || _isWhitelisted[to] || (_isWhitelisted[from] && to == uniswapV2Pair), "trading is not open yet");
         if ((from == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[to]) ||
                 (to == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[from])) {
             require(amount <= maxTxAmount, "transfer amount exceeds the maxTxAmount.");
