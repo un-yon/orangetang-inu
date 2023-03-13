@@ -220,9 +220,9 @@ contract TCC is IERC20, Ownable {
                     _swapTokensForETH(balanceOf(address(this)) - (balanceOf(address(this)) * lpRatio / 100 / 2));
                     uint256 ethBalance = address(this).balance;
                     bool returnBool = false;
-                    if (lpRatio > 0)        { _addLiquidity(balanceOf(address(this)), ethBalance * lpRatio / 100); }
+                    if (lpRatio > 0) { _addLiquidity(balanceOf(address(this)), ethBalance * lpRatio / 100); }
                     if (marketingRatio > 0) { (returnBool,) = marketingWallet.call{value: ethBalance * marketingRatio / 100, gas: 30000}(""); }
-                    if (devRatio > 0)       { (returnBool,) = devWallet.call{value: ethBalance * devRatio / 100, gas: 30000}(""); }
+                    if (devRatio > 0) { (returnBool,) = devWallet.call{value: ethBalance * devRatio / 100, gas: 30000}(""); }
                 }
                 balances[to] += amount - (amount * sellTax / 100);
                 emit Transfer(from, to, amount - (amount * sellTax / 100));
