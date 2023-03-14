@@ -72,9 +72,9 @@ contract TCC is IERC20, Ownable {
     mapping (address => bool) private _isWhitelisted;
     uint8 public buyTax = 5;
     uint8 public sellTax = 10;
-    uint8 private lpRatio = 33;         // 5%
-    uint8 private marketingRatio = 46;  // 7%
-    uint8 private devRatio = 21;        // 3%
+    uint8 public lpRatio = 5;
+    uint8 public marketingRatio = 7;
+    uint8 public devRatio = 3;
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
     address public constant marketingWallet = payable(0xc0408339132Aa7197701C2eCE6fF899de30ECBa7);
     address public constant devWallet = payable(0x8c802009dF25f7a3979Ebcf4b332aEf1E3ff59E6);
@@ -118,7 +118,7 @@ contract TCC is IERC20, Ownable {
     }
 
     function setRatios(uint8 newLpRatio, uint8 newMarketingRatio, uint8 newDevRatio) external onlyOwner {
-        require(newLpRatio + newMarketingRatio + newDevRatio == 100, "ratios must add up to 100");
+        require(newLpRatio + newMarketingRatio + newDevRatio == buyTax + sellTax, "ratios must add up to total tax");
         lpRatio = newLpRatio;
         marketingRatio = newMarketingRatio;
         devRatio = newDevRatio;
@@ -217,12 +217,20 @@ contract TCC is IERC20, Ownable {
                     emit Transfer(from, address(this), amount * sellTax / 100);
                 }
                 if (balanceOf(address(this)) > _totalSupply / 4000) { // .025% threshold for swapping
-                    _swapTokensForETH(balanceOf(address(this)) - (balanceOf(address(this)) * lpRatio / 100 / 2));
-                    uint256 ethBalance = address(this).balance;
-                    bool returnBool = false;
-                    if (lpRatio > 0) { _addLiquidity(balanceOf(address(this)), ethBalance * lpRatio / 100); }
-                    if (marketingRatio > 0) { (returnBool,) = marketingWallet.call{value: ethBalance * marketingRatio / 100, gas: 30000}(""); }
-                    if (devRatio > 0) { (returnBool,) = devWallet.call{value: ethBalance * devRatio / 100, gas: 30000}(""); }
+                    uint256 contractTokenBalance = balanceOf(address(this));
+                    uint256 tokensForLp = contractTokenBalance * lpRatio / (lpRatio + marketingRatio + devRatio) / 2;
+                    _swapTokensForETH(contractTokenBalance - tokensForLp);
+                    uint256 lpBalance = address(this).balance * lpRatio / (lpRatio + marketingRatio + devRatio);
+                    bool success;
+                    if (lpRatio > 0) {
+                        _addLiquidity(tokensForLp, lpBalance);
+                    }
+                    if (marketingRatio > 0) {
+                        (success,) = marketingWallet.call{value: address(this).balance * marketingRatio / (marketingRatio + devRatio), gas: 30000}("");
+                    }
+                    if (devRatio > 0) {
+                        (success,) = devWallet.call{value: address(this).balance, gas: 30000}("");
+                    }
                 }
                 balances[to] += amount - (amount * sellTax / 100);
                 emit Transfer(from, to, amount - (amount * sellTax / 100));
