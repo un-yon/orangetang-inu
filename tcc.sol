@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.13;
+pragma solidity 0.8.19;
 
 interface IERC20 {
     function totalSupply() external view returns (uint256);
@@ -59,15 +59,13 @@ contract TCC is IERC20, Ownable {
     IRouter public uniswapV2Router;
     address public uniswapV2Pair;
     string private constant _name =  "Travel Club Crypto";
-    string private constant _symbol = "$TCC";
+    string private constant _symbol = "$TQQ";
     uint8 private constant _decimals = 18;
     mapping (address => uint256) private balances;
     mapping (address => mapping (address => uint256)) private _allowances;
     uint256 private constant _totalSupply = 100000000 * 10**18;      // 100 million
     uint256 public maxWalletAmount = _totalSupply * 2 / 100;         // 2%
-    uint256 public maxTxAmount = _totalSupply * 2 / 100;             // 2%
     mapping (address => bool) private _isExcludedFromMaxWalletLimit;
-    mapping (address => bool) private _isExcludedFromMaxTransactionLimit;
     mapping (address => bool) private _isExcludedFromFee;
     mapping (address => bool) private _isWhitelisted;
     uint8 public buyTax = 5;
@@ -78,7 +76,8 @@ contract TCC is IERC20, Ownable {
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
     address public constant marketingWallet = payable(0xc0408339132Aa7197701C2eCE6fF899de30ECBa7);
     address public constant devWallet = payable(0x8c802009dF25f7a3979Ebcf4b332aEf1E3ff59E6);
-    bool private tradingOpen = false;
+    bool private isTradingOpen = false;
+    bool private isWalletMaxOn = true;
 
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
@@ -96,19 +95,22 @@ contract TCC is IERC20, Ownable {
         _isExcludedFromMaxWalletLimit[marketingWallet] = true;
         _isExcludedFromMaxWalletLimit[devWallet] = true;
         _isExcludedFromMaxWalletLimit[deadWallet] = true;
-        _isExcludedFromMaxTransactionLimit[owner()] = true;
-        _isExcludedFromMaxTransactionLimit[address(uniswapV2Router)] = true;
-        _isExcludedFromMaxTransactionLimit[uniswapV2Pair] = true;
-        _isExcludedFromMaxTransactionLimit[address(this)] = true;
-        _isExcludedFromMaxTransactionLimit[marketingWallet] = true;
-        _isExcludedFromMaxTransactionLimit[devWallet] = true;
-        _isExcludedFromMaxTransactionLimit[deadWallet] = true;
         _isWhitelisted[owner()] = true;
         balances[owner()] = _totalSupply;
         emit Transfer(address(0), owner(), _totalSupply);
     }
 
     receive() external payable {} // so the contract can receive eth
+
+    function openTrading() external onlyOwner {
+        require(!isTradingOpen, "trading is already open");
+        isTradingOpen = true;
+    }
+
+    function removeWalletLimits() external onlyOwner {
+        require(isWalletMaxOn, "can only remove wallet limits once");
+        isWalletMaxOn = false;
+    }
 
     function setFees(uint8 newBuyTax, uint8 newSellTax) external onlyOwner {
         require(newBuyTax <= 10 && newSellTax <= 10, "fees must be <=10%");
@@ -117,21 +119,16 @@ contract TCC is IERC20, Ownable {
         sellTax = newSellTax;
     }
 
+    function addWhitelist(address newAddress) external onlyOwner {
+        require(!_isWhitelisted[newAddress], "address already added");
+        _isWhitelisted[newAddress] = true;
+    }
+
     function setRatios(uint8 newLpRatio, uint8 newMarketingRatio, uint8 newDevRatio) external onlyOwner {
         require(newLpRatio + newMarketingRatio + newDevRatio == buyTax + sellTax, "ratios must add up to total tax");
         lpRatio = newLpRatio;
         marketingRatio = newMarketingRatio;
         devRatio = newDevRatio;
-    }
-
-    function openTrading() external onlyOwner {
-        require(!tradingOpen, "trading is already open");
-        tradingOpen = true;
-    }
-
-    function addWL(address newAddress) external onlyOwner {
-        require(!_isWhitelisted[newAddress], "address already added");
-        _isWhitelisted[newAddress] = true;
     }
 
     function withdrawStuckETH() external onlyOwner {
@@ -183,22 +180,17 @@ contract TCC is IERC20, Ownable {
     function allowance(address owner, address spender) external view override returns (uint256) { return _allowances[owner][spender]; }
 
     function _transfer(address from, address to, uint256 amount) internal {
-        require(from != address(0), "cannot transfer from the zero address.");
-        require(to != address(0), "cannot transfer to the zero address.");
-        require(amount > 0, "transfer amount must be greater than zero.");
-        require(amount <= balanceOf(from), "cannot transfer more than balance.");
-        require(tradingOpen || _isWhitelisted[to] || (_isWhitelisted[from] && to == uniswapV2Pair), "trading is not open yet");
-        if ((from == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[to]) ||
-                (to == address(uniswapV2Pair) && !_isExcludedFromMaxTransactionLimit[from])) {
-            require(amount <= maxTxAmount, "transfer amount exceeds the maxTxAmount.");
-        }
-        if (!_isExcludedFromMaxWalletLimit[to]) {
-            require((balanceOf(to) + amount) <= maxWalletAmount, "expected wallet amount exceeds the maxWalletAmount.");
-        }
-        if ( (_isExcludedFromFee[from] || _isExcludedFromFee[to]) ||
-                (from != uniswapV2Pair && to != uniswapV2Pair) ||
-                (from == uniswapV2Pair && buyTax == 0) ||
-                (to == uniswapV2Pair && sellTax == 0) ) {
+        require(from != address(0), "cannot transfer from the zero address");
+        require(to != address(0), "cannot transfer to the zero address");
+        require(amount > 0, "transfer amount must be greater than zero");
+        require(amount <= balanceOf(from), "cannot transfer more than balance");
+        if (!isTradingOpen) { require(_isWhitelisted[to] || _isWhitelisted[from], "trading is not open yet"); }
+        if (isWalletMaxOn) { require(_isExcludedFromMaxWalletLimit[to] || balanceOf(to) + amount <= maxWalletAmount, "cannot exceed maxWalletAmount"); }
+        if ( _isExcludedFromFee[from] || _isExcludedFromFee[to] || // buyer or seller exempt from tax
+                (from != uniswapV2Pair && to != uniswapV2Pair) || // no fees on wallet -> wallet transfer
+                (from == uniswapV2Pair && buyTax == 0) || // buy with zero tax
+                (to == uniswapV2Pair && sellTax == 0) ||  // sell with zero tax
+                buyTax + sellTax == 0 ) { // zero buy/sell tax
             balances[from] -= amount;
             balances[to] += amount;
             emit Transfer(from, to, amount);
@@ -215,21 +207,19 @@ contract TCC is IERC20, Ownable {
                 if (sellTax > 0) {
                     balances[address(this)] += amount * sellTax / 100;
                     emit Transfer(from, address(this), amount * sellTax / 100);
-                }
-                if (balanceOf(address(this)) > _totalSupply / 4000) { // .025% threshold for swapping
-                    uint256 contractTokenBalance = balanceOf(address(this));
-                    uint256 tokensForLp = contractTokenBalance * lpRatio / (lpRatio + marketingRatio + devRatio) / 2;
-                    _swapTokensForETH(contractTokenBalance - tokensForLp);
-                    uint256 lpBalance = address(this).balance * lpRatio / (lpRatio + marketingRatio + devRatio);
-                    bool success;
-                    if (lpRatio > 0) {
-                        _addLiquidity(tokensForLp, lpBalance);
-                    }
-                    if (marketingRatio > 0) {
-                        (success,) = marketingWallet.call{value: address(this).balance * marketingRatio / (marketingRatio + devRatio), gas: 30000}("");
-                    }
-                    if (devRatio > 0) {
-                        (success,) = devWallet.call{value: address(this).balance, gas: 30000}("");
+                    if (balanceOf(address(this)) > _totalSupply / 4000) { // .025% threshold for swapping
+                        uint256 tokensForLp = balanceOf(address(this)) * lpRatio / (lpRatio + marketingRatio + devRatio) / 2;
+                        _swapTokensForETH(balanceOf(address(this)) - tokensForLp);
+                        bool success = false;
+                        if (lpRatio > 0) {
+                            _addLiquidity(tokensForLp, address(this).balance * lpRatio / (lpRatio + marketingRatio + devRatio), deadWallet);
+                        }
+                        if (marketingRatio > 0) {
+                            (success,) = marketingWallet.call{value: address(this).balance * marketingRatio / (marketingRatio + devRatio), gas: 30000}("");
+                        }
+                        if (devRatio > 0) {
+                            (success,) = devWallet.call{value: address(this).balance, gas: 30000}("");
+                        }
                     }
                 }
                 balances[to] += amount - (amount * sellTax / 100);
@@ -246,8 +236,8 @@ contract TCC is IERC20, Ownable {
         uniswapV2Router.swapExactTokensForETHSupportingFeeOnTransferTokens(tokenAmount, 0, path, address(this), block.timestamp);
     }
 
-    function _addLiquidity(uint256 tokenAmount, uint256 ethAmount) private {
+    function _addLiquidity(uint256 tokenAmount, uint256 ethAmount, address lpRecipient) private {
         _approve(address(this), address(uniswapV2Router), tokenAmount);
-        uniswapV2Router.addLiquidityETH{value: ethAmount}(address(this), tokenAmount, 0, 0, deadWallet, block.timestamp);
+        uniswapV2Router.addLiquidityETH{value: ethAmount}(address(this), tokenAmount, 0, 0, lpRecipient, block.timestamp);
     }
 }
