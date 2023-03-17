@@ -136,14 +136,14 @@ contract TCC is IERC20, Ownable {
         devRatio = newDevRatio;
     }
     
-    function excludeFromMaxWalletLimit(address account, bool excluded) external onlyOwner {
-        require(_isExcludedFromMaxWalletLimit[account] != excluded, "account is already in desired state");
-        _isExcludedFromMaxWalletLimit[account] = excluded;
+    function excludeFromMaxWalletLimit(address account) external onlyOwner {
+        require(!_isExcludedFromMaxWalletLimit[account], "address is already excluded from max wallet");
+        _isExcludedFromMaxWalletLimit[account] = true;
     }
 
-    function excludeFromFees(address account, bool excluded) external onlyOwner {
-        require(_isExcludedFromFee[account] != excluded, "account is already in desired state");
-        _isExcludedFromFee[account] = excluded;
+    function excludeFromFees(address account) external onlyOwner {
+        require(!_isExcludedFromFee[account], "address is already excluded from fees");
+        _isExcludedFromFee[account] = true;
     }
 
     function withdrawStuckETH() external onlyOwner {
