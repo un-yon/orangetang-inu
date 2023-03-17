@@ -1,3 +1,8 @@
+/*
+website: https://travelclubcrypto.com/
+telegram: https://t.me/travelclubcryptollc
+*/
+
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.19;
@@ -59,7 +64,7 @@ contract TCC is IERC20, Ownable {
     IRouter public uniswapV2Router;
     address public uniswapV2Pair;
     string private constant _name =  "Travel Club Crypto";
-    string private constant _symbol = "$TQQ";
+    string private constant _symbol = "$TCC";
     uint8 private constant _decimals = 18;
     mapping (address => uint256) private balances;
     mapping (address => mapping (address => uint256)) private _allowances;
@@ -74,8 +79,8 @@ contract TCC is IERC20, Ownable {
     uint8 public marketingRatio = 7;
     uint8 public devRatio = 3;
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
-    address public constant marketingWallet = payable(0xc0408339132Aa7197701C2eCE6fF899de30ECBa7);
-    address public constant devWallet = payable(0x8c802009dF25f7a3979Ebcf4b332aEf1E3ff59E6);
+    address public constant marketingWallet = payable(0xEE34626fE0373934C242C183a272DEF5Bb148Ae8);
+    address public constant devWallet = payable(0xb5e8aAa4389EE162612887522Cb38f695f6bb92f);
     bool private isTradingOpen = false;
     bool private isWalletMaxOn = true;
 
@@ -133,8 +138,7 @@ contract TCC is IERC20, Ownable {
 
     function withdrawStuckETH() external onlyOwner {
         require(address(this).balance > 0, "cannot send more than contract balance");
-        uint256 amount = address(this).balance;
-        (bool success,) = address(owner()).call{value : amount}("");
+        (bool success,) = address(owner()).call{value: address(this).balance}("");
         require(success, "error withdrawing ETH from contract");
     }
 
@@ -186,11 +190,7 @@ contract TCC is IERC20, Ownable {
         require(amount <= balanceOf(from), "cannot transfer more than balance");
         if (!isTradingOpen) { require(_isWhitelisted[to] || _isWhitelisted[from], "trading is not open yet"); }
         if (isWalletMaxOn) { require(_isExcludedFromMaxWalletLimit[to] || balanceOf(to) + amount <= maxWalletAmount, "cannot exceed maxWalletAmount"); }
-        if ( _isExcludedFromFee[from] || _isExcludedFromFee[to] || // buyer or seller exempt from tax
-                (from != uniswapV2Pair && to != uniswapV2Pair) || // no fees on wallet -> wallet transfer
-                (from == uniswapV2Pair && buyTax == 0) || // buy with zero tax
-                (to == uniswapV2Pair && sellTax == 0) ||  // sell with zero tax
-                buyTax + sellTax == 0 ) { // zero buy/sell tax
+        if (_isExcludedFromFee[from] || _isExcludedFromFee[to] || (from != uniswapV2Pair && to != uniswapV2Pair)) {
             balances[from] -= amount;
             balances[to] += amount;
             emit Transfer(from, to, amount);
