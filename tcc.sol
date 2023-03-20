@@ -1,9 +1,9 @@
+// SPDX-License-Identifier: MIT
+
 /*
 website: https://travelclubcrypto.com/
 telegram: https://t.me/travelclubcryptollc
-*/
-
-// SPDX-License-Identifier: MIT
+ */
 
 pragma solidity 0.8.19;
 
@@ -68,8 +68,8 @@ contract TCC is IERC20, Ownable {
     uint8 private constant _decimals = 18;
     mapping (address => uint256) private balances;
     mapping (address => mapping (address => uint256)) private _allowances;
-    uint256 private constant _totalSupply = 100000000 * 10**18;      // 100 million
-    uint256 public maxWalletAmount = _totalSupply * 2 / 100;         // 2%
+    uint256 private constant _totalSupply = 100000000 * 10**18;               // 100 million
+    uint256 public constant maxWalletAmount = _totalSupply * 2 / 100;         // 2%
     mapping (address => bool) private _isExcludedFromMaxWalletLimit;
     mapping (address => bool) private _isExcludedFromFee;
     mapping (address => bool) private _isWhitelisted;
@@ -81,19 +81,18 @@ contract TCC is IERC20, Ownable {
     address public constant deadWallet = 0x000000000000000000000000000000000000dEaD;
     address public constant marketingWallet = payable(0xEE34626fE0373934C242C183a272DEF5Bb148Ae8);
     address public constant devWallet = payable(0xb5e8aAa4389EE162612887522Cb38f695f6bb92f);
-    bool private isTradingOpen = false;
-    bool private isWalletMaxOn = true;
+    bool private tradingIsOpen = false;
 
     constructor() {
         IRouter _uniswapV2Router = IRouter(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         uniswapV2Router = _uniswapV2Router;
-        uniswapV2Pair = IFactory(_uniswapV2Router.factory()).createPair(address(this), _uniswapV2Router.WETH() );
+        uniswapV2Pair = IFactory(_uniswapV2Router.factory()).createPair(address(this), _uniswapV2Router.WETH());
         _isExcludedFromFee[owner()] = true;
         _isExcludedFromFee[address(this)] = true;
         _isExcludedFromFee[marketingWallet] = true;
         _isExcludedFromFee[devWallet] = true;
         _isExcludedFromFee[deadWallet] = true;
-        _isExcludedFromMaxWalletLimit[owner()] == true;
+        _isExcludedFromMaxWalletLimit[owner()] = true;
         _isExcludedFromMaxWalletLimit[address(uniswapV2Router)] = true;
         _isExcludedFromMaxWalletLimit[uniswapV2Pair] = true;
         _isExcludedFromMaxWalletLimit[address(this)] = true;
@@ -108,13 +107,8 @@ contract TCC is IERC20, Ownable {
     receive() external payable {} // so the contract can receive eth
 
     function openTrading() external onlyOwner {
-        require(!isTradingOpen, "trading is already open");
-        isTradingOpen = true;
-    }
-
-    function removeWalletLimits() external onlyOwner {
-        require(isWalletMaxOn, "can only remove wallet limits once");
-        isWalletMaxOn = false;
+        require(!tradingIsOpen, "trading is already open");
+        tradingIsOpen = true;
     }
 
     function setFees(uint8 newBuyTax, uint8 newSellTax) external onlyOwner {
@@ -135,7 +129,7 @@ contract TCC is IERC20, Ownable {
         marketingRatio = newMarketingRatio;
         devRatio = newDevRatio;
     }
-    
+
     function excludeFromMaxWalletLimit(address account) external onlyOwner {
         require(!_isExcludedFromMaxWalletLimit[account], "address is already excluded from max wallet");
         _isExcludedFromMaxWalletLimit[account] = true;
@@ -198,8 +192,8 @@ contract TCC is IERC20, Ownable {
         require(to != address(0), "cannot transfer to the zero address");
         require(amount > 0, "transfer amount must be greater than zero");
         require(amount <= balanceOf(from), "cannot transfer more than balance");
-        if (!isTradingOpen) { require(_isWhitelisted[to] || _isWhitelisted[from], "trading is not open yet"); }
-        if (isWalletMaxOn) { require(_isExcludedFromMaxWalletLimit[to] || balanceOf(to) + amount <= maxWalletAmount, "cannot exceed maxWalletAmount"); }
+        require(tradingIsOpen || _isWhitelisted[to] || _isWhitelisted[from], "trading is not open yet");
+        require(_isExcludedFromMaxWalletLimit[to] || balanceOf(to) + amount <= maxWalletAmount, "cannot exceed maxWalletAmount");
         if (_isExcludedFromFee[from] || _isExcludedFromFee[to] || (from != uniswapV2Pair && to != uniswapV2Pair)) {
             balances[from] -= amount;
             balances[to] += amount;
